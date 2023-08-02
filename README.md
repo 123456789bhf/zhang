@@ -156,6 +156,38 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
         字段列表
 
   from
+
+        表名列表
+
+  group by
+
+        分组字段列表
+
+  having by
+
+        分组后条件列表
+
+  order by
+
+        排序字段列表
+
+  limit
+
+        分页参数
+
+- 基本查询
+  1. 查询多个字段
+     - select 字段1，字段2，... from 表名；
+     - select * from 表名；
+  2. 设置别名
+     - select 字段1（as 别名1），字段2（as 别名2），... from 表名；
+  3. 去除重复记录
+     - select dinstinct 字段列表 from 表名；
+- 条件查询（where）
+- 聚合函数（count,max,min,avg,sum）
+- 分组查询（group by）
+- 排序查询（order by)
+- 分页查询（limit）
 ### 16SQL--DQL--条件查询
 ### 17SQL--DQL--聚合函数
 ### 18SQL--DQL--分组查询
