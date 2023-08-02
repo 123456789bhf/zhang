@@ -1,4 +1,6 @@
-# 深度学习 - 八股
-## 4. 多层感知机
--  多层感知机（MLP）:如果只有一个隐藏层，如果节点数（神经元个数）足够多，并且参数合适，也是可以拟合复杂函数的，但是这样一般比较困难，采用神的神经网络可以更加简单的拟合函数关系
--  
+import torch
+from IPython import display
+from d2l import torch as d2l
+
+batch_size = 256
+train_iter, test_iter = d2l.load_data_fashion_mnist(batch_size)
