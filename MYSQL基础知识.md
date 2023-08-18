@@ -334,18 +334,90 @@ create   | 创建数据库/表
 3. 撤销权限
 - revoke 权限列表 on 数据库名  表名 from '用户名'@'主机名'
 ### SQL--DCL--小结
-
+## 第三节 函数
+- **函数**：是指一段可以直接被令一段程序调用的程序或者代码，很多函数mysql里面已经内置了
+- **例如**
+- 数据库中，存储的入职日期，如何快速计算入职天数？？？
+- 数据库表中，存储的数学生的分数值，如98，75，如何快速判定分数的等级呢？？？
 ### 函数--字符串函数
-### 函数--日期数据
+MYSQL中内置了很多字符串函数，常见的有如下几个
+
+函数  | 功能明  
+---  |----
+concat(s1,s2,...,sn)  | 字符串拼接，将s1,s2,...sn拼接成一个字符串
+lower(Str)  | 将字符串全部转成小写
+upper(str)  | 将字符串全部转成大写
+lpad(str,n,pad)  | 将字符串str左边用pad进行填充，使其长度达到n
+rpad(str,n,pad)  | 将字符串str右边用pad填充，使得其实长度达到n
+trim(str)   | 去掉字符串头部和尾部的空格
+substring(str,start,len)   | 返回字符串str从start位置器的len长的的字符串
+create   | 创建数据库/表
+
+- 使用：select 函数（参数）
+- 案例：将企业员工的工号统一为5位数，目前不足5位的全部在前面补0，比如，1号员工的功耗应该是00001
+### 函数--数值函数
+常见的数值函数如下
+
+函数  | 功能说明 
+---  |----
+ceil(x)  | 向上取值
+floor(x)  | 向下取整
+mod(x,y)  | x%y.x/y的余数
+rand()  | 返回0-1的均匀数
+round(x,y)  | 求参数x四舍五入的值，保留y位小数
+
+使用方法：select 函数名（参数）
+- 例子：利用数据库中的函数，生成一个六位数的随机验证码
+### 函数--日期函数
+函数  | 功能明  
+---  |----
+curdate   | 返回当前日期
+curtime   |  返回当前时间
+now()    | 返回当前的日期和时间(年月日时分秒)
+year(date)    | 获取指定date的年份
+mouth(date)   | 获取指定date的月份
+day(date)   | 获取指定date的日期
+date_add(date,interval expr type)   | 返回一个日期/时间值家伙是那个一个时间间隔expr后的时间值
+datediff(date1,date2)   | 返回起始时间date1和结束时间date2之间的天数
+
+- **例子**：查询所有员工的入职天数，并根据入职天数倒序排序
 ### 函数--流程函数
+流程函数也是很常见的一类函数，可以在sql语句中时间条件筛选，从而提高语句的效率
+
+函数   |  功能名
+-----   | -----
+if（value,t,f)   |  如果值value为true返回t,否则返回f
+ifnull(value1,value2)   |  如果value不为空，那么返回value1,否则返回value2
+case when [val1] then [res1] ... else[default] end (...表示when then 可以有多个)  | 如果val1是true那么返回res1,否则返回默认值default
+case expr when [val1] then [res1] ... else [default] end   | 如果expr的值为val1,返回res1,否则，返回默认值default
+
+- 例子：查询emp表的员工的姓名和工作地址（北京/上海--->一线城市，其他---->二线城市）
+
 ### 函数--小结
+1. 字符串函数：concat,lower, upper,lpad,rpad,trim,substring
+2. 数值函数：ceil,floor,rand(),round()
+3. 日期函数：curdate，curtime,now,year,month,day,date_add,datefidd
+4. 流程函数：if ,ifnull,case when then  else end
+## 第四节 约束
 ### 约束--概述
+1. 概念：约束时作用域表中字段上的规则，用于限制存储在表中的数据
+2. 目的：保证数据库中数据的正确性、有效性、完整性
+3. 分类
+
+约束   | 描述   |  关键字
+---- | -----  | ----
+非空约束   | 限制该字段的数据不能为null   | not null
+唯一约束   | 保证该字段的所有数据都是唯一、不重复的   | nuique
+主键约束    | 主键是一行数据的唯一标识，要求非空且唯一    | primary key
+默认约束   | 保存数据时，如果为指定该字段的值，那么采用的默认值   | default
+检查约束    | 保证字段值满足某一个人条件   | check
+外键约束    | 用来让两张表的数据之间建立连接，保证数据的一致性和完整性   | foreing key
+
+- 注意：约束是作用域表中的字段上的，可以在创建表/修改表的时候添加约束
 ### 约束--演示
+
 ### 约束--外键约束
 ### 约束--外键删除更新行为
 ### 约束--小结
-
-## 第三节 函数
-## 第四节 约束
 ## 第五节 多表查询
 ## 第六节 事务
