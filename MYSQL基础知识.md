@@ -302,10 +302,39 @@ select 聚合函数（字段列表） from 表名；
 - DCL介绍：用于管理数据库用户、控制数据库访问权限
 - DCL-管理用户
 1. 查询用户
-        use mysql
-   
+- use mysql
+- select * from user
+2. 创建用户
+- create user '用户名'@'主机名' identified by '密码'
+3. 修改用户密码
+- alter user '用户名'@'主机名' identified mysql_native_password by '新密码'
+4. 删除用户
+- drop user '用户名'@'主机名'
+
+- **注意：**
+- 直接在DG里面的mysql数据库中进行操作即可mysql->table->user,并且将右上角的改成user
+- 主机名可以使用%通配（所有主机）
+- 这类开发人员操作的比较少，主要是DBA（数据库管理员）使用
 ### SQL--DCL--权限控制
+权限  | 说明  
+---  |----
+all,all privileges  | 所有权限
+select  | 查询数据
+insert  | 插入数据
+update  | 修改数据
+delete  | 删除数据
+alter   | 修改表
+drop   | 删除数据库/表/视图
+create   | 创建数据库/表
+- DCL—-权限控制(多个权限用逗号分隔)
+1. 查询权限
+- show grants for '用户名'@'主机名'
+2. 授予权限
+- grant 权限列表 on 数据库名 表名 to '用户名'@'主机名'
+3. 撤销权限
+- revoke 权限列表 on 数据库名  表名 from '用户名'@'主机名'
 ### SQL--DCL--小结
+
 ### 函数--字符串函数
 ### 函数--日期数据
 ### 函数--流程函数
