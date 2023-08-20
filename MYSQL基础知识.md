@@ -4,6 +4,7 @@
 这不是SQL文件  
 那么就开始学习吧
 # chaptre1 MRSQL基础篇
+# 第一章 基础
 ## 第一节 MYSQL概述
 ### 01数据库概念
 名称  | 全称  | 简称
@@ -51,12 +52,14 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
     -- 查询所有数据库：SHOW DATABASES  
     -- 查询当前数据库：SELECT DATABASE()  
     select databases();  
-    -- 创建：CREATE DATABASE[IF NOT EXISTS]数据库名[DEFAULT CHARSET 字符集][COLLATE 排序规则]  
-    create database if not exists 数据库名 default charset utf8mb4  
-    -- 删除：DROP DaTABASE[IF EXISTS]数据库名  
-    drop database if exists itheima    
+    -- 创建：
+           CREATE DATABASE[IF NOT EXISTS]数据库名[DEFAULT CHARSET 字符集][COLLATE 排序规则]  
+           create database if not exists 数据库名 default charset utf8mb4  
+    -- 删除：
+            DROP DaTABASE[IF EXISTS]数据库名  
+            drop database if exists itheima    
     -- 使用：USE 数据库名  
-    use itheima  
+             use itheima  
 ### 08基础--SQL--DDL--表查询--创建&查询
 > DDL--表操作--查询 
 >- 查询当前数据库所有表：SHOW TABLES; 
@@ -426,7 +429,82 @@ status|状态|char(1)|如果没有指定该值，默认为1|default
 gender|性别|char(1)|无| 
 
 ### 约束--外键约束
+- 概念：外键是用来让两张表的数据之间建立联系，从而保持数据的一致性和完整性、
+- 具有外键的表称为**子表（从表）**，外键所关联的表称为**父表（主表）**
+- **注意**：如果两张表只是在逻辑层面上有关联关系，但是在数据层面并未建立外键关联，所以是无法保证数据的一致性与完整性的
+- 添加外键语法
+
+         create table 表名（
+
+                    字段名 数据类型,
+
+                      ...
+
+                    [constraint] [外键名称] foreign key(外键字段名) references 主表（主表列名）
+
+        ）;
+
+        alter table 表名 add constraint (外键名称) foreign key 外键字段名 references 主表（主表列名）
+- 删除外键语法
+
+         alter table 表名 drop foreign key 外键名称；
+
 ### 约束--外键删除更新行为
+- 删除/更新行为
+
+行为   | 说明
+----------  | --------
+no action  | 当在父表中删除/更新对用记录时，首先检查该记录是否有对应外键，如果有则不允许删除/更新。（与restrict一致）
+restrict  | 当在父表中删除/更新对应记录时，首先检查该记录是否有对应外键，如果有那么不允许删除/更新。（与no action一致）
+cascade  | 当在父表中删除/更新对应记录时，首先检查该记录是否有对应外键，如果有那么也更删除/更新外键在子表中的记录
+set null  | 当在父表中伤处对应记录时，首先检查该记录是否有对应外键，如果有那么设置子表中该外键的值为null .(这就要求该外键允许取值null)
+set default  | 父表有变更时，子表将外键列设置成一个默认值。
+
+- 语法
+  
+      alter table 表名 add constraint 外键名称（自己定义） foreign key (外键字段名) referencces 主表（主表字段名） on update on delete cascade;
 ### 约束--小结
+1. 非空约束:not null
+2. 唯一约束:unique
+3. 主键约束primary key(自动增长：auto_increment)
+4. 默认约束：default
+5. 检查约束:check
+6. 外键约束：foreign key
 ## 第五节 多表查询
+
+### 多表查询--多表关系介绍
+
+### 多表查询--概述
+- 项目开发中，在进行数据库结构设计时，会根据额业务需求以及业务模块之间的关系，分析并设计表结构，由于业务之间相互关联，所以各个表结构之间也存在着各种联系，基本上分为三种：
+  - 一对多（多对一）
+  - 多对对
+  - 一对一
+-  一对多
+  >- 案例：部门与员工的关系
+  >- 关系：一个部门对应多个员工，一个员工对应一个部门
+  >- 实现：再多的一方建立外键，指向一的一方的主键。
+
+- 多对多
+  - 案例：学生与课程之间的关系
+  - 关系：一个学生可以选修多个课程，一个课程也可以供多个学生选择
+  - 实现：建立第三张中间表，中间表至少包含两个外键，分别关联两方主键
+  
+### 多表查询--内连接
+### 多表查询--外连接
+### 多表查询--自链接
+### 多表查询--联合查询union
+### 多表查询--子查询介绍
+### 多表查询--标量子查询
+### 多表查询--行列子查询
+### 多表查询--练习1
+### 多表查询--练习2
+### 多表查询--小结
 ## 第六节 事务
+### 事务--简介
+### 事务--操作演示
+### 事务--四大特征ACID
+### 事务--开发事务问题
+### 事务--开发事务演示及隔离级别
+### 事务--小结
+## 第六节 基础篇总结
+# 第二章--进阶
