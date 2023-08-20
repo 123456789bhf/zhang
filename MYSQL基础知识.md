@@ -428,6 +428,15 @@ age|年龄|int|大于0，并且小于等于120|check
 status|状态|char(1)|如果没有指定该值，默认为1|default
 gender|性别|char(1)|无| 
 
+- **auto_increment注意点**
+  - 一个表中只能有一个自动增长字段，该字段的数据类型是整数类型，且必须定义为键，如 UNIQUE KEY 、PRIMARY KEY。
+
+  - 若为自动增长字段插入 NULL、0、DEFAULT 或在插入时省略该字段，则该字段就会使用自动增长值；若插入的是一个具体值，则不会使用自动增长值。
+
+  -  自动增长值从 1 开始自增，每次加 1。若插入的值大于自动增长的值，则下次插入的自动增长值会自动使用最大值加 1；若插入的值小于自动增长值，则不会对自动增长值产生影响。
+
+  -  使用 DELETE 删除记录时，自动增长值不会减小或填补空缺
+
 ### 约束--外键约束
 - 概念：外键是用来让两张表的数据之间建立联系，从而保持数据的一致性和完整性、
 - 具有外键的表称为**子表（从表）**，外键所关联的表称为**父表（主表）**
@@ -696,12 +705,92 @@ all  | 子查询返回列表的所有值都必须满足
         select s.name, s.id, c.name from student s, course c, student_course sc where s.id = sc.studentid and c.id =sc.courseid;
 ### 多表查询--练习2
 ### 多表查询--小结
+1. 多表关系
+   - 一对多：在多的一方设置外键，关联一方的主键
+   - 多对多：建立中间表，中间表包含两个外键，关联两张表的主键
+   - 一对一：用于表结构拆分，在其中任何一方设置外键（union),关联另一方主键
+2. 多表查询
+   - 内连接
+     - 隐式：select ...from 表A,表B where 条件...
+     - 显式：select...from 表A inner join 表B on 条件
+   - 外连接
+     - 左外：select ...from 表A left join 表B on 条件
+     - 右外：select ...from 表A right join 表B on 条件
+   - 自连接：select...from 表A 别名1，表2 别名2 where 条件...
+   - 子查询：标量子查询，列子查询，行子查询，表子查询
 ## 第六节 事务
 ### 事务--简介
+- **事务**是一组操作集合，它是一个不可分割的工作单位，事务会把所有的操作作为一个整体一起向系统提交或撤销操作请求，即这些操作**要么同时成功，要么同时失败**
+- 下面的操作李四的钱没有增加1000，那么转账过程不成功，此时张三的钱也不应该减少1000
+  
+<center><img src="https://i.postimg.cc/tJ4ZrXMh/2023-08-20-214538.png" width="500" hegiht="" ></center>
+<center><br> </br></center>
+
+- 默认mysql的事务是自动提交的，也就是说，当执行一条DML语句，mysql会立即隐式的提交事务
 ### 事务--操作演示
+- 查看/设置事务提交方式
+  
+      select @@autocommit;
+      set autocommit=0;(1:自动提交（默认），0：手动提交)
+- 提交事务
+  
+      commit;
+- 回滚事务
+  
+      rollback
+- 开启事务
+  
+      start transaction 或begin;
+
+- 提交事务
+  
+      commit 
+- 回滚事务
+
+      rollback
 ### 事务--四大特征ACID
+##### 事务四大特性
+- 原子性（automicity）:事务是不可分割的最小原子单元，要么全部成功，要么全部失败。
+- 一致性（consistency):事务完成时，必须使所有的数据都保持一致状态。
+- 隔离性（isolation):数据库系统提供的隔离机制，保证事务在不受外部并发操作影响的独立环境下运行。
+- 持久性（durability）:事务一旦提交或回滚，它对数据库的改变就是永久的。
 ### 事务--开发事务问题
-### 事务--开发事务演示及隔离级别
+问题  | 描述
+------  | -------
+脏读  | 一个事务读取带另外一个数据还没有提交的数据
+不可重复读  | 一个事务先读取同一条记录，但两次读取的数据不同，称之为不可重复读
+幻读  | 一个事务按照条件查询数据时，没有对应的数据行（此时可以执行插入操作），但在插入数据时，又发现这行数据已经存在，好像出现了’幻影‘
+- 脏读：事务B在读取id=1的数据时，事务A正在更改id=1的数据，但还没有提交
+
+  <center><img src="https://i.postimg.cc/8C6TSs31/1.png" width="500" hegiht="" ></center>
+- 不可重复读：事务B更新了id=1的数据并且提交了，此时事务A在事务B更新id=1的数据之前查询过一次，在更新之后又查询了id=1的数据，这就出现了两次读取数据不一样的情况
+
+ <center><img src="https://i.postimg.cc/wMchbqH2/2.png" width="500" hegiht="" ></center>
+
+- 幻读：在事务A读取完id=1的数据之后（此时发现没有id=1的数据，id是主键），事务B提交了修改id=1的语句，此时数据库中已经有id==1的数据，那么事务A在执行插入id=1的数据就会出错，因为id是主键，违背唯一性，然后事务A在执行查询id=1仍然没有（因为前面已经解决了不可重复读取的问题了，所以在此查询id=1仍然没有），也就是出现了幻影
+
+ <center><img src="https://i.postimg.cc/0Q1ntHD8/3.png" width="500" hegiht="" ></center>
+
+### 事务--并发事务演示及隔离级别
+##### 事务隔离级别用于解决并发问题
+- 事务隔离级别
+
+隔离级别  | 脏读  | 不可重复读  | 幻读
+-------  | ------ | -------  | -------
+read uncommitted  | 不可以  |  不可以  | 不可以
+read committed（oracle 的默认）  | 可以  |不可以  | 不可以
+repeatable read(mysql的默认)  | 可以  | 可以  | 不可以
+serializable  | 可以  | 可以  | 可以
+
+— 从上到下隔离级别升高，性能降低，安全性升高，选择隔离级别要根据实际情况选择
+- 查看隔离级别
+  
+     select @@transaction_isolation
+- 设置事务隔离级别
+  
+      select [session|global] transaction isolation level {read uncommitted|read committed|repeatable_read|serializable}
+      session:仅对当前窗口有效
+      global :对所有的客户端会话窗口有效
 ### 事务--小结
 ## 第六节 基础篇总结
 # 第二章--进阶
