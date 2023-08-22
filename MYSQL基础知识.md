@@ -917,14 +917,238 @@ serializable  | 会出现  | 会出现  | 会出现
         show engines;
         create table XXX(...)engine=innodb;
 ## 进阶--mysql安装（linux版本）
+## MySQL8.0.26-Linux版安装
+
+### 1. 准备一台Linux服务器
+
+云服务器或者虚拟机都可以; 
+
+Linux的版本为 CentOS7;
+
+
+
+### 2. 下载Linux版MySQL安装包
+
+https://downloads.mysql.com/archives/community/
+
+![image-20211031230239760](assets/image-20211031230239760.png) 
+
+
+
+### 3. 上传MySQL安装包
+
+![image-20211031231930205](assets/image-20211031231930205.png) 
+
+
+
+### 4. 创建目录,并解压
+
+```
+mkdir mysql
+
+tar -xvf mysql-8.0.26-1.el7.x86_64.rpm-bundle.tar -C mysql
+```
+
+
+
+### 5. 安装mysql的安装包
+
+```
+cd mysql
+
+rpm -ivh mysql-community-common-8.0.26-1.el7.x86_64.rpm 
+
+rpm -ivh mysql-community-client-plugins-8.0.26-1.el7.x86_64.rpm 
+
+rpm -ivh mysql-community-libs-8.0.26-1.el7.x86_64.rpm 
+
+rpm -ivh mysql-community-libs-compat-8.0.26-1.el7.x86_64.rpm
+
+yum install openssl-devel
+
+rpm -ivh  mysql-community-devel-8.0.26-1.el7.x86_64.rpm
+
+rpm -ivh mysql-community-client-8.0.26-1.el7.x86_64.rpm
+
+rpm -ivh  mysql-community-server-8.0.26-1.el7.x86_64.rpm
+
+```
+
+
+
+### 6. 启动MySQL服务
+
+```
+systemctl start mysqld
+```
+
+```
+systemctl restart mysqld
+```
+
+```
+systemctl stop mysqld
+```
+
+
+
+### 7. 查询自动生成的root用户密码
+
+```
+grep 'temporary password' /var/log/mysqld.log
+```
+
+命令行执行指令 :
+
+```
+mysql -u root -p
+```
+
+然后输入上述查询到的自动生成的密码, 完成登录 .
+
+
+
+### 8. 修改root用户密码
+
+登录到MySQL之后，需要将自动生成的不便记忆的密码修改了，修改成自己熟悉的便于记忆的密码。
+
+```
+ALTER  USER  'root'@'localhost'  IDENTIFIED BY '1234';
+```
+
+执行上述的SQL会报错，原因是因为设置的密码太简单，密码复杂度不够。我们可以设置密码的复杂度为简单类型，密码长度为4。
+
+```
+set global validate_password.policy = 0;
+set global validate_password.length = 4;
+```
+
+降低密码的校验规则之后，再次执行上述修改密码的指令。
+
+
+
+### 9. 创建用户
+
+默认的root用户只能当前节点localhost访问，是无法远程访问的，我们还需要创建一个root账户，用户远程访问
+
+```
+create user 'root'@'%' IDENTIFIED WITH mysql_native_password BY '1234';
+```
+
+
+
+### 10. 并给root用户分配权限
+
+```
+grant all on *.* to 'root'@'%';
+```
+
+
+
+### 11. 重新连接MySQL
+
+```
+mysql -u root -p
+```
+
+然后输入密码
+
+
+
+### 12. 通过DataGrip远程连接MySQL
 
 ## 进阶--索引
 ### 进阶--索引--概述
+- **介绍**：索引是一种数据结构，邦族MYSQL**高校获取数据**的**数据结构**。在数据之外，数据库系统还维护着满足特定查找算法的数据结构，这些数据结构以某种方式引用（指向）数据，这样就可以在这些数据结构上实现高级查找算法，这种数据结构就是索引。
+
+[![2023-08-22-215029.png](https://i.postimg.cc/XvrWfPtN/2023-08-22-215029.png)](https://postimg.cc/NyvZYdgZ)
+
+- 演示
+  - 无索引：也就是全表扫描，从第一条数据开始查找
+  - 有索引：使用二叉树（并不是真实的索结构），每个节点都存储着对应数据的索引
+
+[![2023-08-22-215430.png](https://i.postimg.cc/Kcw9q84y/2023-08-22-215430.png)](https://postimg.cc/ThjqhGrk)
+
+- 优缺点
+  
+优势  | 劣势
+-----  | ------
+提高数据索引的效率  | 索引列也是需要占用空间的
+通过索引对数据进行排序，降低数据排序成本，降低CPU的消耗  | 索引大大提高了查询效率，同时也降低更新表的速度，如对表进行insert,update,delete时，效率降低
+
+- **注意**：一般缺点可以忽略，因为硬盘比较便宜，可以存储很多数据，其次，现实中增删改的操作比较少。
 ### 进阶--索引--结构--介绍
+- 索引在存储引擎层中实现，也就意味着不同的存储引擎有不同的结构，主要包括以下几种：
+
+索引结构  | 描述
+------  | ---------
+B+Tree索引  | 最常见的索引类型，大部分存储引擎都支持B+树索引
+Hash索引  | Hash索引的底层数据结构使用哈希表实现的，只有精确匹配索引列的查询才有效，不支持范围查询
+R-Tree(空间索引，了解即可)  | 空间索引是MYISAM引擎的一个特殊引类型，主要用于地理空间数据类型，通常使用较少
+Full-text(全文索引)  | 是一种通过建立倒排索引，快速匹配文档的方式。类似于Lucene,Sokr,ES
+
+索引 | InnoDB  | MYSIAM  | Memory
+-----  | -----  | ------  |------
+B+Tree索引  | 支持  | 支持  | 支持
+Hash索引  | 不支持  | 不支持 | 支持
+R-Tree索引 | 不支持 | 支持  | 不支持
+Full-text  | 5.6版本之后  | 支持 | 不支持
+
+- **注意**：我们平常所说的索引，如果没有特别声明，都是指B+Tree索引。
 ### 进阶--索引--结构--btree
+- <font color="red">二叉树</font>
+
+[![2023-08-22-221309.png](https://i.postimg.cc/0j3vBRFy/2023-08-22-221309.png)](https://postimg.cc/8fhx73T2)
+
+- 左边的的是平衡二叉树，左子节点比父节点小，右子节点比父节点大，
+- 二叉树缺点：顺序插入时，会形成一个链表，查询性能大大降低。大数据量情况下，层级较深，检索速度慢。红黑树可以防止出现链表的情况。
+- 红黑树：大数据量情况下，层级较深，检索速度慢。
+- <font color="red">B-Tree(多路平衡查找树)</font>
+  - 以一颗最大度数（max-degree）为5（5阶）的b-tree为例（每个几点最多存储4个key,5个指针）。k个key有k+1个指针，k+1个子节点
+  - 树的度数：指的是一个结点的子结点个数。
+  - 下面的图表示4个key,小于20，大于20小于30，大于30小于62，大于62小于89，大于89，共五个指针（也就是5个子节点）
+
+[![2023-08-22-222016.png](https://i.postimg.cc/2jPhWq9g/2023-08-22-222016.png)](https://postimg.cc/V5WJQN8F)
+
+- data structure visualization网站（https://www.cs.usfca.edu/~galles/visualization/Algorithms.html）找到B-Tree可以看到插入过程
+
+[![2023-08-22-222933.png](https://i.postimg.cc/XvkXrqBS/2023-08-22-222933.png)](https://postimg.cc/7CbqcxNm)
+
+- B-Tree介绍：https://blog.csdn.net/yin767833376/article/details/81511377
+  
 ### 进阶--索引--结构--B+tree
+- B+Tree
+  - 以一颗最大度数（max-degree）为4（4阶）的b+tree为例子
+  - 介绍：https://blog.csdn.net/yin767833376/article/details/81511377
+  - 特点
+    - 所有数据都会出现在叶子节点，其他节点只是起到索引数据作用，叶子节点存放数据
+    - 叶子节点形成了一个单向链表，每一个节点都会通过一个指针指向下一个元素，最终形成了单向链表
+
+[![2023-08-22-223638.png](https://i.postimg.cc/gcLF4Jmv/2023-08-22-223638.png)](https://postimg.cc/G9R5mbB2)
+
+- B+Tree
+  - Mysql索引数据结构对经典的B-Tree进行了优化。在原B+Tree的基础上，增加一个指向相邻叶子结点的链表指针，就形成了带有顺序指针的B-Tree，提高区间访问性能，利于数据库的排序操作。
+
+[![2023-08-22-223852.png](https://i.postimg.cc/D0pS2wpQ/2023-08-22-223852.png)](https://postimg.cc/30p81YTW)
+
+- InnoDB中提过页
+
 ### 进阶--索引--结构--hash
+- Hash:哈希索引就是采用一定的hash算法，将键值换算成新的hash值，映射到对应的槽位上，然后存储在hash表中。如果两个（或多个）简直映射到一个相同的槽位上，他们就产生了hash冲突，可以通过链表来解决。
+
+[![2023-08-22-224307.png](https://i.postimg.cc/mD2MRJ2s/2023-08-22-224307.png)](https://postimg.cc/NySLkNHJ)
+
+- hash索引的特点
+  1. Hash索引只能用于对等比较（=，in）,不支持范围查询（between，>,<,...）（因为在存储的时候没有顺序）
+  2. 无法利用索引完成排序操作（因为hash运算出来的结果无序）
+  3. 查询效率高，通常只要一次检索就可以了，效率通常要高于B+tree索引）
+- 存储引擎支持
+  - 在MYSQL中，支持hash索引的是Memory引擎，而innoDB中具有自适应hash功能，hash索引是存储引擎根据B+tree索引在指定条件下自动创建的。
 ### 进阶--索引--结构--思考题
+为什么INnoDBb存储引擎选择适应B+tree索引结构
+- 相对于二叉树，层级更少，搜索效率更高（二叉树在顺序数据条件下会形成一个链表，这样搜索效率降低，红黑树虽然能解决二叉树情况，但本质上是树，大数据量情况下，层级较深，检索速度慢。）
+- B-Tree,无论是叶子节点还是非叶子节点，都会保存数据，这样导致一页中存储的键值减少，指针跟着减少，要同样保存大量数据，只能增加树的高度,导致性能降低。、
+- 对于hash索引，B-Tree支持范围匹配以及排序操作。
 ### 进阶--索引--分类
 ### 进阶--索引--思考题
 ### 进阶--索引--语法
