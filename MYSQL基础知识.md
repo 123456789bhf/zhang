@@ -1150,18 +1150,234 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
 - B-Tree,无论是叶子节点还是非叶子节点，都会保存数据，这样导致一页中存储的键值减少，指针跟着减少，要同样保存大量数据，只能增加树的高度,导致性能降低。、
 - 对于hash索引，B-Tree支持范围匹配以及排序操作。
 ### 进阶--索引--分类
+- 索引分类
+  
+分类  | 含义  | 特点  | 关键字
+----  |-------  | -------  | -------
+主键索引  | 针对于表中主键创建的索引  | 默认自动创建,只能有一个  | primary
+唯一索引  | 避免同样一个表中某数据列中的值重复  | 可以有多个  | unique
+常规索引  | 快速定位特定数据  | 可以有多个 |  
+全文索引  | 全文索引查找的是文本中的关键词，而不是比较索引中的值 | 可以有多个 | fulltext
+
+- **注意**
+  -  实际上当进行唯一约束的时候会自动创建一个唯一索引
+  - 只有主键索引只有一个，其他索引可以有多个
+
+- 在innoDB存储引擎中，根据存储引擎的形状可以分为以下两种：
+  
+分类  | 含义 | 特点
+-----  | --------  | -------
+聚集索引(clustered index)  | 将数据存储与索引存放到一块，索引结构的叶子节点保存了行数据  | 一张表中聚集索引必须有，并且只有一个
+二级索引（secondary index）  | 将数据与索引分开存储，索引结构的叶子节点关联的是对应的主键  | 一张表中聚集索引可以存在多个
+- 聚集索引的选取规则
+  - 如果存在主键，主键索引就是聚集索引
+  - 如果不存在主键，将使用第一个唯一（union）索引作为聚集索引
+  - 如果表没有主键，或没有合适的唯一索引，那么innoDB会自动生成一个rowid作为隐藏的聚集索引
+- 下面图中id是主键，所以是聚集索引，name不是主键，所以是二级索引，叶子节点挂的是主键
+
+[![2023-08-23-102732.png](https://i.postimg.cc/256ZsjRr/2023-08-23-102732.png)](https://postimg.cc/w1CMJpjG)
+
+- 查找时候，先根据name='Arm‘，在二级索引中找到叶子节点对应的id值，再根据id值在聚集索引中找到整行数据。
+
+[![2023-08-23-103026.png](https://i.postimg.cc/bvQ7jPQV/2023-08-23-103026.png)](https://postimg.cc/XZYHwT19)
+
 ### 进阶--索引--思考题
+1. 以下SQL语句哪个执行效率高？为什么？
+
+       select * from user where id=10;
+       select * from user where name='Arm';
+       注意：id为主键，name字段创建的有索引
+- 第一条直接在聚集索引中查找即可，也就是扫描一个索引
+- 第二条需要现在二级索引中扫描，再在聚集索引中扫描，也就是扫描两个索引，所以第一条语句的效率高
+2. innoDB主键索引的B+tree高度有多个呢？
+ - 假设一行数据大小为1K,一页中可以存储16行这样的数据(一页大小为16K)。innoDB的指针占用6个字节的空间，主键为bigint（如果主键是int,占用4个字节，住建为bigint占用8个字节）,占用字节数为8
+ - 假设B+Tree的高度为2，其中n为一个非子结点存储的主键个数，那么指针个数为n+1，一页的大小为16K
+   - n*8+(n+1)*6=16*1024 计算n约为1170，也就是该非叶子节点最多有1171个指针
+   - 1171*16=18736也就是B+Tree最多存储的数据量
+  - 假设高度为3
+
+[![2023-08-23-104722.png](https://i.postimg.cc/sDT67XcR/2023-08-23-104722.png)](https://postimg.cc/F7JVQh8P)
+
+    - 1171*1171*16=21939856，也就是B+Tree最多存储的数据量
 ### 进阶--索引--语法
-### 进阶--索引--性能分析--explain
+- 创建索引
+  
+        create [unique|fulltext] index index_name on table_namen (index_col_name,...);
+        如果没有 [unique|fulltext]就表示创建的是常规索引
+        index_col_name,...表示一个索引可以关联多个字段的
+  - 如果一个索引关联一个字段称为**单列索引**
+  - 如果一个索引关联多个字段称为**组合索引/关联索引**
+- 查看索引
+
+        show index from table_name;
+ 
+- 删除索引
+
+        drop index index_name on table_name
+- 案例：
+  1. name字段为姓名字段，该字段的只可能重复，为该字段创建索引
+  2. phone手机字段的值，是非空，并且唯一，为该字段创建唯一索引
+  3. 为profession,age,status创建联合索引
+  4. 为email建立合适的索引来提高查询效率
+
 ### 进阶--索引--性能分析--查看执行频次
+- sql执行频率：如果实习频率较低，那么没必要进行优化
+  - MYSQL客户端连接成功后，可通过show[sessionlglobal]status命令可以提供服务器状态信息。同各国如下指令，可以查询当前数据库的insert,update,delete,select的访问次数
+
+            show global status like 'com____';
+            一个下划线代表一个字符
+  
 ### 进阶--索引--性能分析--慢查询日志
+- 慢日志查询:如果前面已经知道那条语句执行频频次高，之后就可以对该语句进行优化
+  - 慢查询日志记录了所有执行时间超过指定参数（long_query_time,单位：秒，默认10秒）的所有SQL语句日志。
+  - MYSQL的慢查询日志默认没有开启，需要在MYSQL的配置文件（/etc/my.cnf）中配置如下信息：
+    
+          show variables like 'slow_query_log';#查询慢查询日志是否打开
+          #开启mysql慢日志查询开关
+          slow_query_log=1;
+          #设置慢日志的时间为2秒，SQL语句执行时间超过2秒，就会视为慢查询，记录慢查询日志
+          long_query_time=2;
+    
+   - 配置完成之后，通过以下指令重新启动MYSQL服务器进行测试，查看慢日志文件记录信息/Var/lib/mysql/localhost-slow.log.
 ### 进阶--索引--性能分析--show profiles
+- 慢查询日志是根据语句执行时间来判断执行效率，但是要求是耗时在直接定时间以上才会显示，比如说2s,低于2s就不会显示，但是我们也相对该语句进行优化
+- profile详情
+  - show profiles能够在做SQL优化时帮助我们了解事件都耗去哪里了。通过have_profiling参数，能够看到当前MYSQL是否支持profile操作。
+
+          select @@have_profiling
+  - 默认profiling是关闭的，可以通过set语句在session/global级别开启profiling
+           select @@profiling; #查看是否打开
+           set profiling=1;#打开
+           show profiles; #查看强档操作所有语句耗时操作
+- profile详情
+  - 执行一系列业务SQL的操作，然后通过如下指令查看指令的执行耗时
+    
+        #查看每一条语句的耗时基本情况
+        show profiles;
+        #查看指定query_id的SQL语句各个阶段的耗时情况
+        show profile for query query id;#query_id在show profiles的第一列显示
+        #产看指定query_id的SQL语句的CPU使用情况
+        show profile cpu for query query_id;
+### 进阶--索引--性能分析--explain
+- 前面都是根据时间判断sql语句的执行效率，实际上这只是粗略的判断，并不能完全判断sql语句执行性能，我们还需要explain来判断sql语句执行效率
+- explain执行计划
+  - explain或者desc命令获取mysql如何执行select语句的信息，包括select语句执行过程中表如何连接和连接顺序
+- 语法
+  
+          #直接在select语句之前加上关键字explain/desc
+          explain select 字段列表 from 表名 where 条件；
+
+[![2023-08-23-152748.png](https://i.postimg.cc/RFNqKKDH/2023-08-23-152748.png)](https://postimg.cc/5YWxMY14)
+
+- explain执行计划各个字段的含义
+  - id
+    - select 查询序列号，表示查询中执行select子句或者是操作表的顺序（id相同，执行顺序从上到下；id不同，值越大，越先执行）(相对于多表查询来说的)
+  - select_type
+    - 表示select的类型，常见的取值有simple（简单表，即不使用表连接或者子查询）、primary(著查询，即外层查询)、union(union中的第二个或者后面的查询语句）、subquery(select/where之后包含了子查询）等
+  - type(重点关注)
+    - 表示连接类型，性能由好到差的连接类型为NULL,system,const,eq_ref,ref(使用非唯一索引查询时会出现ref),range,index（用了索引，但是也是对全表进行扫描）,all(表示全表扫描),优化时候，尽量将类型往好的优化。实际上，一般不容易出现null,只有当不访问任何表的时候才会出现null
+  - possible_key（重点关注）
+    - 显示可能应用在这张表上的索引，一个或者多个
+  - key（重点关注）
+    - 实际使用的索引，如果为NULL,那么没有使用索引
+  - key_len（重点关注）
+    - 表示索引中使用的字节数，该值为索引字段最大可能长度，并非实际使用长度，在不损失精确性的前提下，长度越短越好。
+  - rows（参考）
+    - mysql认为必须执行查询的行数，在innoDB引擎表中，是一个古居之，可能并不总是准确的
+  - filtered
+    - 表示返回结果的行数占需读取行数的百分比，filtered的值越大越好。
+  - extra
+    - 额外信息
 ### 进阶--索引--使用规则--验证索引效率
+- 索引使用
+- 验证索引效率
+  - 在未建立索引之前，执行sql语句，查看sql语句的耗时
+
+          select* from tb_sku where sn='100000003145001';
+  - 针对字段创建索引
+  
+          create index idx_skn_sn on tb_sku(sn);
 ### 进阶--索引--使用规则--最左前缀法则
+- 最左前缀法则
+  - 如果索引了多列（联合索引），要遵循最左前缀法则。最左前缀法则指的是查询从索引的最左列开始，并且不跳过索引中的列（也就是最左列必须存在，中间列可以没有，但是后面的部分会失效）。
+  - 如果跳过了某一列，索引将部分失效（后面的字段索引失效）
+  - **联合索引**就是依次按照各个字段来进行二分查找，先定位到第一个字段对应的值在哪个页里，然后如果第一个字段有多条数据值都一样，就根据第二个字段来找，以此类推，一定可以定位到某条或者某几条数据。
+    
+            select * from tb_user where profession='软件工程' and age=31 and status='0';
+            explain select * from tb_user where profession='软件工程' and age=31 and status='0';
+            explain select * from tb_user where profession='软件工程' and age=31;
+            #去掉status='0'之后，索引长度从51变为49，说明该索引长度为2
+            explain select * from tb_user where profession='软件工程' ;
+            #去掉age=31之后，索引长度从49变为47，说明该索引长度为2
+            explain select * from tb_user where age=31 and status='0';
+            #根据结果可知这样做不是索引，是全部扫描，因为 profession='软件工程'没有，也就是不满足最左前缀法则
+            explain select * from tb_user where status='0';
+            #根据结果可possible_keys=null知这样做不是索引，是全部扫描，因为 profession='软件工程'以及age=31 没有，不满足最左前缀法则
+            explain select * from tb_user where profession='软件工程' and status='0';
+            #根据key_len profession有索引，status没有索引，因为跳过了age列
+            explain select * from tb_user where age=31 and status='0' and profession='软件工程';
+            #此时仍有索引，并且key_len=54 ,也就是三个字段都用上了
+- 范围查询
+  - 联合索引中，会出此案范围（<,>），范围查询右侧的列索引失效
+
+          explain select * from tb_user where profession='软件工程' and age>30 and status=0;
+          #key_len是49 ，因为age使用了范围索引，后面的列status会失效，也就是只有profession，age
+          explain select * from tb_user where profession='软件工程' and age>=30 and status=0;
+          #如果是>=,那么索引长度变为54，也就是全部索引，但是自己尝试的仍是49
+
 ### 进阶--索引--使用规则--索引失效情况一
+- 索引列运算
+  - 不要再索引列上进行运算操作，否则索引将失效
+- 字符串不加引号
+- 模糊查询
+  - 如果仅仅是尾部模糊匹配，索引不会失效。如果是头部模糊胡匹配，索引会失效。
+- 去掉索引，也就是全表扫描，效率极低
+  
+          explain select * from tb_user where profession like '软件%';
+          #走索引，是联合索引的最左边的字段，长度为47
+          explain select * from tb_user where profession like '%工程';
+          #不走索引
+          explain select * from tb_user where profession like '%工%';
+          #前后都加%，索引也失效，只要前面加了索引都会失效
 ### 进阶--索引--使用规则--索引失效情况二
+- or连接条件
+  - 用or分割的条件，如果or前面的条件中有索引，而后面的列中没有索引，那么设计的索引都不会被用到。
+  - 前后条件都有索引时才会生效
+- 数据分布影响
+  - 如果mysql评估使用索引比全表更慢，那么不会使用索引，也就是需要根据数据分布情况来决定是否使用索引，如果查询条件大部分数据满足，那么使用全局扫描，否则使用索引
+
+          #数据分布影响
+          select * from tb_user;
+          explain select * from tb_user where phone>='17799990020';
+          #此时使用全局索引
+          explain select * from tb_user where phone>='17799990000';
+          #根据type=all可知是全局扫描，因为是第一个数据，所有数据都满足条件，所以走全局扫描更亏啊
+          explain select * from tb_user where phone>='17799990010';
+          #此时因为表中绝大部分数据满足条件，索引消失，也就是全局扫描
+          explain select * from tb_user where phone>='17799990013';
+          #此时少部分满足条件，走索引
+          explain select * from tb_user where profession is null;
+          #此时有索引
+          explain select * from tb_user where profession is not null;
+          #没有索引，因为绝大部分数据满足条件，所以全局扫描
+          update tb_user set profession=null;
+          explain select * from tb_user where profession is null;
+          #此时因为大部分数据满足条件，所以是全局扫描
 ### 进阶--索引--使用规则--SQL提示
+- sql提示
+  - sql提示，是优化数据库的一个重要手段，简单来说，就是在sql语句中加入一些人为的提示来达到优化操作的目的。也当有联合索引和但只索引值，可以指定到底是用哪个索引
+  - user index(告诉数据库使用哪个索引,可能不使用该索引):
+    
+            explain select * from tb_user use index(index_user_pro) where profession='软件工程'；
+  - ignore index(高数数据库不是用哪个索引)：
+    
+            explain select * from tb_user ignore index(index_user_pro) where profession='软件工程'；
+  - force index(告诉数据库必须使用哪个索引):
+
+            explain select * from tb_user force index(index_user_pro) where profession='软件工程'；
 ### 进阶--索引--使用规则--覆盖索引&回表查询
+- 覆盖索引
+  - 尽量使用覆盖索引（查询时用了索引，并且需要返回的列，在该索引中已经全部找到），减少selece *的使用
 ### 进阶--索引--使用规则--前缀索引
 ### 进阶--索引--使用规则--单列&联合索引
 ### 进阶--索引--设计原则
@@ -1176,6 +1392,42 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
 ### 进阶--sql优化--update优化（避免行锁升级为表锁）
 ### 进阶--sql优化--小结
 ## 进阶--视图/存储过程/触发器
+### 进阶--视图--检查选项（cascaded）
+### 进阶--视图--检查选项（local）
+### 进阶--视图--更新及作用
+### 进阶--视图--案例
+### 进阶--存储过程-介绍
+### 进阶--存储过程--基本语法
+### 进阶--存储过程--变量--系统变量
+### 进阶--存储过程--变量--用户自定义变量
+### 进阶--存储过程--变量--局部变量
+### 进阶--存储过程--if判断
+### 进阶--存储过程--参数（in,out,inout）
+### 进阶--存储过程--case
+### 进阶--存储过程--循环--while
+### 进阶--存储过程--循环--repeat
+### 进阶--存储过程--循环--loop
+### 进阶--存储过程--游标--cursor
+### 进阶--存储过程--条件处理器--handler
+### 进阶--存储函数
+### 进阶--触发器--介绍
+### 进阶--触发器--案例1（insert类型）
+### 进阶--触发器--案例2（update类型）
+### 进阶--触发器--案例3（delete类型）
+### 进阶--视图/存储过程/触发器--小结
 ## 进阶--锁
+### 进阶--锁--介绍
+### 进阶--锁--全局锁--介绍
+### 进阶--锁--全局锁--一致数据备份
+### 进阶--锁--表级锁--表锁
+### 进阶--锁--表级锁--元数据锁
+### 进阶--锁--表级锁--意向锁
+### 进阶--锁--表级锁--意向锁--测试
+### 进阶--锁--行级锁--介绍
+### 进阶--锁--行级锁--行锁
+### 进阶--锁--行级锁--间隙锁&临建锁1
+### 进阶--锁--行级锁--间隙锁&临建锁2
+### 进阶--锁--小结
 ## 进阶--innoDB引擎
+
 ## 进阶--mysql管理
