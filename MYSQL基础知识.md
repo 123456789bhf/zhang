@@ -1378,13 +1378,150 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
 ### 进阶--索引--使用规则--覆盖索引&回表查询
 - 覆盖索引
   - 尽量使用覆盖索引（查询时用了索引，并且需要返回的列，在该索引中已经全部找到），减少selece *的使用
+
+          #尽量避免使用select*
+          explain select id,profession,age  from tb_user where profession='软件工程' and age=31 and status='0';
+          #extra:Using where; Using index
+          explain select id,profession,age,status  from tb_user where profession='软件工程' and age=31 and status='0';
+          #extra:Using where; Using index,性能高
+          explain select id,profession,age,status,name  from tb_user where profession='软件工程' and age=31 and status='0';
+          #与前面的extra不同:Using index condition,与前面相比，那么性能会更低
+- 知识小贴士
+  - using index condition:查找使用了索引，但需要会表查询数据
+  - using where,using index:查找使用了索引，但需要的数据都在索引列这种能找到，所以不需要会表查询数据。
+- 上面语句的解释
+  - 实际上id,profession,age,status都是联合索引，联合索引采用的是二级索引，其叶子节点存储的是id
+  - 但name字段是不是二级索引，所以需要根据
+- 回表查询
+  - 覆盖索引
+  - 聚集索引
+  
+[![2023-08-23-205913.png](https://i.postimg.cc/6pch71cH/2023-08-23-205913.png)](https://postimg.cc/v41nkhp9)
+  - 不需要回表查询
+
+[![2023-08-23-210908.png](https://i.postimg.cc/LXPqKn0c/2023-08-23-210908.png)](https://postimg.cc/2bzjn8YG)
+  - 需要回表的查询，此时性能较低（因为name是二级索引，所以先根据name找到id，然后根据找到的id在从聚集索引中找到该行数据，然后找到对应的gender值）
+
+[![2023-08-23-211536.png](https://i.postimg.cc/02n0HBSp/2023-08-23-211536.png)](https://postimg.cc/8jFv7wt5)
+- 使用select *极有可能出现会表查询
+- **思考**
+  - 一张表，有四个字段（id,username,password,status）由于数据量大，需要对以下sql语句及逆行优化，该如何进行才是最有方案：
+
+      select id,username,password from tb_user where username='itcast';
+     - 针对username和password建立联合索引，此时不需要回表查询
 ### 进阶--索引--使用规则--前缀索引
+- 前缀索引
+  - 当字段类型为字符串（varchar,text等）时， 有时候需要索引很长的字符串（比如：一篇文章的标题或者内容），这会让索引变得很大，查询时候，浪费大量的磁盘IO,影响查询效率。此时可以只将字符串的一部分前缀建立索引，这样可以大大节约索引空间，从而提高索引效率。
+  - 语法
+
+          create index idx_XXXX on table(column(n))
+  - 前缀长度
+    - 可以根据索引的选择性来觉电工，而选择性是指不重复的索引值（基数）和数据表的记录总数的壁纸，索引选择性越高查询效率越高，唯一索引的选择性是1，这是最高的索引选择性，性能也是最好的。实际上要根据选择性地要求来决定截取前几个。如果选择行为1，那么就要截取的为1的最短的哪个。
+    - 语法
+      
+          select count(distinct email)/count(*) from tb_user;
+          selecy count(distinct substring(email,1,5))/count(*) from tb_user;
+- 前缀索引查询流程
+  - 辅助索引存储的是email的钱5个字符
+
+[![2023-08-23-213818.png](https://i.postimg.cc/XNrwgkcv/2023-08-23-213818.png)](https://postimg.cc/5jMY4vrc)
+  - 查询的时候，根据前五个字符的辅助索引查询到id,再回表查询，根据id找到该行数据，此时将查询结果中的email与查询要求email的值之间对比（因为前面对比只是对应的前缀），如果是，存储该条结果，在辅助索引中lvbu6叶子节点后面的叶子节点是不是lvbu6，如果不是那么停止查询，直接返回上面存储的结果，如果是，需要将该条数据存储起来，继续，最后返回存储的数据（可能有多条 ）
 ### 进阶--索引--使用规则--单列&联合索引
+- 单列索引：一个索引只包含单个列
+- 联合索引：一个索引只包含多个列
+- 在业务场景中，如果存在多个查询条件吉安，考虑针对于查询字段建立索引时候，建议建立联合索引，而非单列索引
+  - 单列索引情况
+
+[![2023-08-23-215609.png](https://i.postimg.cc/LsGhmwhY/2023-08-23-215609.png)](https://postimg.cc/67LB0Hrt)
+    - **注意**
+      - 多条件联合查询时候，mysql优化器会评估那个字段的索引效率更高，会选择该索引完成本次查询
+ - 联合索引情况
+   - 每个节点键值存储的各个字段的组合情况，先按照手机号排序，如果手机号一致，那么按照name字段排序，叶子节点挂的是行记录对应的主键（id），所以联合索引可以避免回表查询的
+
+[![2023-08-23-220124.png](https://i.postimg.cc/j2DbCd9R/2023-08-23-220124.png)](https://postimg.cc/gLb5Tdm7)
+- **注意**
+  - 根据最左前缀法则，可以知道联合索引字段的前后顺序不同，结果也可能不同。
 ### 进阶--索引--设计原则
+1. 针对于数据量较大，并且查询比较频繁的表建立索引（当大于1万的数据量时）
+2. 认真对常作为查询条件（where）,排序（order by）,分组（group by）操作的字段建立索引
+3. 尽量选择分区度高（也就是能为一确定一行数据的，比如人的身份证）的列作为索引，尽量建立唯一索引，区分度越高，使用索引的效率越高，区分度地时候，效率不高（比如人的性别）
+4. 如果四字符串类型的字段，字段长度越长（一篇文章内容），可以针对字段的特点建立前缀索引，此时要考虑前缀区分度
+5. 尽量使用联合索引，减少单列索引，查询时，联合索引很多时候可以覆盖索引，节省存储空间，避免回表，提高查询效率，遵循最左前缀法则
+6. 要控制索引的数量，索引不是多多益善，索引越多，维护索引结构的代价也就越大，会影响增删改的效率，而且会占用磁盘
+7. 如果索引列不能存储null值，请在创建表时使用not null。当优化器知道每一列是否包含null值时，他可以更好的确定哪个索引有效地用于查询
 ### 进阶--索引--小结
+[![2023-08-23-221539.png](https://i.postimg.cc/vmDjyS6V/2023-08-23-221539.png)](https://postimg.cc/PLsKzyyX)
+[![2023-08-23-221825.png](https://i.postimg.cc/B6SjtH4H/2023-08-23-221825.png)](https://postimg.cc/p9SW699L)
 ## 进阶--sql优化
 ### 进阶--sql优化--插入数据
+- insert优化
+  - 批量操作(500-1000条合适,当几万条时候，可以分成几次进行批量插入）
+    
+          insert into tb_test values(1,'tom'),(2,'bob'),...
+  - 手动提交事务
+
+          insert into tb_test values(1,'tom'),(2,'bob')
+          insert into tb_test values(3,'tom1'),(4,'bob1')
+          insert into tb_test values(5,'tom2'),(6,'bob2')
+          commit;
+  - 主键顺序插入
+    - 主键乱序插入：8 1 9 21 88 2 4 15 89
+    - 主键顺序插入：1 2 3 4 5 6 7 8 9 15 88
+- 大批量数据插入
+  - 如果一次性需要插入大批量数据，使用insert语句插入性能较低，此时可以使用mysql数据库提供的load指令进行插入。操作如下：
+
+[![2023-08-23-222548.png](https://i.postimg.cc/s2N0n9x4/2023-08-23-222548.png)](https://postimg.cc/gw3Djhvx)
+
+          #客户端连接服务器时，加上参数--local-infile
+           mysql --local-infile -u root -p
+          #设置全局参数local_infile为1，开启从本地加载文件导入数据的开关
+          set global local_infile=1;
+          #执行load指令将准备好的数据加载到表结构中
+          load data local infile '/home/user1/load_user_100w_sort.sql' into table tb_user fields terminated by ',' lines terminated by '\n';
+          #上面表示每个字段用逗号分割，每行数据用\n分割
+
+          #load_user_100w_sort.sql文件所在位置（建立一个新的测试服务器）
+          load_user_100w_sort.sql
+- 在执行上面三条语句的时候还需要新建一个测试服务器，进行如下操作
+
+[![2023-08-23-225139.png](https://i.postimg.cc/yxBkgG9f/2023-08-23-225139.png)](https://postimg.cc/5Y7xDnsv)
+[![2023-08-23-225150.png](https://i.postimg.cc/8Pzz2Mbr/2023-08-23-225150.png)](https://postimg.cc/7bj47Cdx)
+[![2023-08-23-225204.png](https://i.postimg.cc/WbzsWj2G/2023-08-23-225204.png)]
+(https://postimg.cc/JGww0fH0)
+- **注意**
+  - 主键顺序插入性能高于乱序插入
 ### 进阶--sql优化--主键优化
+- 数据组织方式
+  - 在innoDB存储引擎中，表数据都是根据主键顺序组织存放的，这种存储方式的表称为索引组织表（index orginalized table IOT），因为innoDB有两种索引，聚集索引叶子节点存储的行数据，并且唯一，一张表默认主键采用的是聚集索引，所以表数据都是根据主键顺序组织存放的
+  - 看叶子节点从左到右增大，叶子节点存储的是主键，主键挂的是行数据
+
+[![2023-08-23-230329.png](https://i.postimg.cc/Z5cFT1B5/2023-08-23-230329.png)](https://postimg.cc/k22tsYv0)
+[![2023-08-23-230329.png](https://i.postimg.cc/Z5cFT1B5/2023-08-23-230329.png)](https://postimg.cc/k22tsYv0)
+
+- 页分裂
+  - 页可以是空，也可以填充一半，也可以填充100%。每个页至少包含了2行数据（如果一行数据，那么就是链表）（如果一行数据过大，会行溢出），根据主键排列。
+  - 主键顺序插入:前一个页插满在查下一个页
+    
+[![2023-08-23-230837.png](https://i.postimg.cc/zBmnp54p/2023-08-23-230837.png)](https://postimg.cc/FfZdHtrJ)
+  - 主键乱序插入：因为叶子节点是有序的，所以50插入时，不应该开启新的数据页数（第三个数据页），放在前面的页，存放在47之后，第一个数据页没有写满（大小代表了所占内存的多少），但50没办法插入了，此时会开启一个新的数据页，找到第一个数据页50%位置，将右边的数据全部移动到第三个数据页
+
+[![2023-08-23-231454.png](https://i.postimg.cc/SNrRvqYV/2023-08-23-231454.png)](https://postimg.cc/2V1C1swB)
+[![2023-08-23-231500.png](https://i.postimg.cc/k4QqRFxw/2023-08-23-231500.png)](https://postimg.cc/34xPPGfD)
+[![2023-08-23-231530.png](https://i.postimg.cc/tJr0Fr7d/2023-08-23-231530.png)](https://postimg.cc/D4bYTPrm)
+- 页合并
+  - 当删除一行数据时候，实际上记录并没有被物理删除，只是记录被标记（flaged）为删除并且它的空间变得允许被其他记录声明使用
+  - 当页中删除的记录达到merge_threshold(默认为页的50%)，innoDB会开始寻找最靠近的页（前或后）看看是否可以将两个页合并以优化空间使用
+  - 删除数据16，在innoBDB并不会直接删除，而是将对应空间标识为删除空间，此时可以插入其他数据
+[![2023-08-23-232141.png](https://i.postimg.cc/QCc2yX6b/2023-08-23-232141.png)](https://postimg.cc/1V57gZ1n)
+[![2023-08-23-232209.png](https://i.postimg.cc/Kvkk4C15/2023-08-23-232209.png)](https://postimg.cc/3dhJcSCy)
+[![2023-08-23-232221.png](https://i.postimg.cc/d0BDzYfJ/2023-08-23-232221.png)](https://postimg.cc/nsXHD6ZW)
+   - 知识小贴士
+     - merge_threshold:合并的阈值，可以自己设置，在创建表或者创建索引时指定
+- 主键设置原则
+  - 满足业务需求的情况下，尽量降低主键长度（因为二级索引叶子节点下面挂的是主键需要占用内存，搜索时候效率也会降低）
+  - 插入数据时，尽量选择顺序插入，选择使用auto_increment自增主键（因为会存在页分类）
+  - 尽量不要使用UUID或者其他自然主键，如：身份证（因为没有顺序，容易乱序并且比较长）
+  - 业务操作时，尽量避免对主键修改（因为需要动索引结构）
 ### 进阶--sql优化--order by优化
 ### 进阶--sql优化--group by 优化
 ### 进阶--sql优化--limit优化
