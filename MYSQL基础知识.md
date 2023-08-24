@@ -1523,28 +1523,310 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
   - 尽量不要使用UUID或者其他自然主键，如：身份证（因为没有顺序，容易乱序并且比较长）
   - 业务操作时，尽量避免对主键修改（因为需要动索引结构）
 ### 进阶--sql优化--order by优化
+1. using filesort:通过表的索引或者全表索引，读取满足条件的数据行，然后在排序缓冲去sort buff中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫filesort排序.
+2. using index:通过有序索引顺序扫描直接返回有序数据，这种情况即为using index,不需要额外排序，操作效率高。性能高，即优化时候，尽量优化到using index
+
+[![2023-08-24-105814.png](https://i.postimg.cc/rm8HKWM2/2023-08-24-105814.png)](https://postimg.cc/d7x6fhh5)
+- order by优化
+  - 如果同为升序索引，那么叶子节点存储数据已经是有序的
+  - 如果一升一降，那么先对age升序排序，age相同在对phone降序排序，按照age升序，phone降序，那么直接返回结果也是符合要求的
+  - **注意**：优化得到using index的前提是已经使用覆盖索引（也就是不需要额外查询，不需要回表查询，select *就不行）
+[![2023-08-24-110029.png](https://i.postimg.cc/cJc9yHY9/2023-08-24-110029.png)](https://postimg.cc/Z9CF6Jwp)
+- 总结
+  - 根据排序字段建立合适的索引，多字段排序时，页遵循最左前缀法则
+  - 尽量使用覆盖索引
+  - 对字段排序，一个升序，一个降序，此时需要注意联合索引在创建时候的规则（asc/desc）
+  - 如果不可避免地出现filesort,大数据排序时候，可以适当增大排序缓冲区的大小sort_buffer_size(默认256K)，如果缓冲区满了，会在磁盘中排序，此时效率降低
+
+          show variables like 'sort_buffer_size' #查找默认大小
 ### 进阶--sql优化--group by 优化
-### 进阶--sql优化--limit优化
+
+          #删除删掉目前的联合索引idx_user_pro_age_sta;
+          drop index idx_user_pro_age_sta on tb_user;
+          #执行分组操作，根据profession字段分组
+          explain select profession,count(*) from tb_user group by profession;
+          #创建索引
+          create index idx_user_pro_age_sta on tb_user(profession,age,status);
+          #执行分组，根据profession进行分组
+          explain select profession,count(*) from tb_user group by profession;
+          #执行分组，根据profession，age进行分组
+          explain select profession,count(*) from tb_user group by profession,age;
+- 分组操作时，可以通过索引来提高效率
+- 分组操作时，索引的使用也是满足最左前缀法则的
+### 进阶--sql优化--limit分页查询的优化
+- 一个常见又非常头疼的问题就是limit 2000000，10，此时需要mysql排序前2000010激励，仅仅返回2000000~2000010的记录，其他记录弄丢，查询排序的代价非常大。
+- 优化思路：一般分页查询时，通过创建覆盖索引能够较好的提高性能，可以通过覆盖索引加子查询的方式优化
+
+            select s.* from tb_sku s,(select id from tb_sku order by id limit 7000000,10) a where s.id=a.id;
+
 ### 进阶--sql优化--count优化
+          explain select count(*) from tb_sku;
+- 在myisam引擎把一个表的总行数存放在磁盘上，因此执行count(*)的时候会直接返回这个数，效率很高
+- innoDB就麻烦了，他执行count(*)的时候，需要把数据一行一行地从引擎中读取出来，然后累积计数，所以在大数据情况下，计算非常耗时
+- 优化思路：自己计数
+- count的几种用法
+  - count()是一个聚合函数，对应返回的结果集，一行行地判断，如果count函数的参数不是null，累计值就加1，否则不加，最后返回累计值
+  - 用法：count(*),count(主键)，count(字段)，count(1);
+- count的几种用法
+  - count(主键）
+    - innoDB引擎会遍历整张表，把每一行的主键id的值都取出来，返回给服务层。服务层拿到主键后，直接按行进行累加,不用判断是否为null（主键不可能为null）
+  - count(字段)
+    - 没有not null约束：innoDB引擎会遍历整张表把每一行的字段都取出来，返回给服务层。服务层判断是否为null,不为null，技术累加。
+    - 有not null约束：innoDB引擎会遍历整张表吧每一行的字段都取出来，返回给服务层，直接按行进行累加。
+  - ccount(1)（count(-1)也可以，方-1进去）
+    - innoDB会遍历整张表，但不取值。服务层对于返回的每一行，放一个数字‘1’进去，直接进行累加。
+  - count(*)
+    - innoDB引擎并不会把全部字段取出来，而是做了专门的优化，不取值，服务层直接按行进行累加。
+- 按照效率排序：count(字段）<count(主键id）<count(1)~count(*),所以尽量使用count(*)
 ### 进阶--sql优化--update优化（避免行锁升级为表锁）
+- update优化
+  
+            update student set no='2000100100' where id=1;
+            update student set no='2000100105' where name='韦一笑';
+  - innoDB的行锁是针对索引加的锁，不是针对记录加的锁，并且该索引不能失效，否则会从行锁升级为表锁
 ### 进阶--sql优化--小结
+[![2023-08-24-151413.png](https://i.postimg.cc/bvbcv4D4/2023-08-24-151413.png)](https://postimg.cc/gwYBSSKK)
 ## 进阶--视图/存储过程/触发器
+- 介绍
+  - 视图（view）是一种虚拟存在的表。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图查询中使用规则图时动态生成的。
+  - 通俗的讲，视图只保存了查询sql逻辑，不保存查询结果。所以我们在创建视图的时候，主要的工作就落在创建这条sql查询语句上。
+- 创建
+
+        create [or replace] view 视图名称（列明列表） as select语句 [with[cascade|local|check option]]
+- 查询
+
+        查看创建视图的语句：show create view 视图名称；
+        查看视图数据：select * from 视图名称...;
+- 修改
+
+          方式一：create [or replace] view 视图名称（列明列表） as select语句 [with [cascaded|local|check option]]
+          方式二：alter view 视图名称（列明列表） as select语句 [with [cascaded|local|check option]]
+- 删除
+
+          drop view [if existis] 视图名称[,视图名称]...
+
 ### 进阶--视图--检查选项（cascaded）
+- 试图检查选项
+  - 当使用with check option子句创建视图时，mysql会通过视图检查正在更改的每个行，例如：插入，更新，删除，以使其其符合视图的定义。mysql允许基于另一个视图创建视图，他还会检查依赖试图中的规则以保持一致性。为了确定检查的范围，mysql提供了两个选项：cascaded和local,默认值为cascaded。
+   - cascaded:比如，v2视图是基于v1视图的，如果在v2视图创建的时候指定了检查选项为 cascaded，但是v1视图创建时未指定检查选项。 则在执行检查时，不仅会检查v2，还会级联检查v2的关联视图v1。
+     - v2在v1的基础上创建的视图，在对v2操作时，不仅要检查是否满足v2的条件还要检查是否满足v1的条件，虽然v1创建时没有加上cascaded选项，这种现象称为**级联**
+       
+         create view vl ad select id,name from student where id<20;
+         create view v2 ad select id,name from v1 where id<20 with cascaded check option;
+       
+[![2023-08-24-162148.png](https://i.postimg.cc/ZqJJVR6Y/2023-08-24-162148.png)](https://postimg.cc/87n8CTyx)
+- 注意：一旦在创建某个视图中加入了cascadede选项，那么当前视图的之前依赖（基于的视图创建的视图）视图都会满足，如果后面的没有加入cascaded,那么不需要满足
 ### 进阶--视图--检查选项（local）
+- 试图检查选项
+  - 当使用with check option子句创建视图时，mysql会通过视图检查正在更改的每个行，例如：插入，更新，删除，以使其其符合视图的定义。mysql允许基于另一个视图创建视图，他还会检查依赖试图中的规则以保持一致性。为了确定检查的范围，mysql提供了两个选项：cascaded和local,默认值为cascaded。
+  - local：比如，v2视图是基于v1视图的，如果在v2视图创建的时候指定了检查选项为 local ，但是v1视图创 建时未指定检查选项。 则在执行检查时，知会检查v2，不会检查v2的关联视图v1。
+
+          create view v1 as select id,name from student where id<=15 #检查
+          create view v2 as select id,name from v1 where id>=10 with local check option; #检查
+          create view v3 as select id,name from v2 where id>=10； #不检查
+[![2023-08-24-165012.png](https://i.postimg.cc/7YzRLJLB/2023-08-24-165012.png)](https://postimg.cc/mtbjXDCM)
 ### 进阶--视图--更新及作用
+- 视图的更新
+  - 要使视图可更新，视图中的行与基础表中的行之间必须存在一对一的关系(视图中的一行数据对应数据表中的一行数据)。如果试图包含一下任何选项，那么该视图不可更新。
+    1. 聚合函数或窗口函数（sum(),min(),max(),count()等）
+    2. distinct
+    3. having
+    4. union 或union all
+    5. group by
+- 视图的作用
+  - 简单
+    - 视图不亲可以简化拥护对数据的理解，也可以简化他们的操作。那些被经常使用的查询可以被定义为试图，从而使得拥护不必为以后的操作每次指定全部条件。
+  - 安全
+    - 数据库可以授权，但不能授权到特定的行和特定的列上。通过视图，用户只能查询和修改他们所能见到的数据。这样就可以保证数据安全性
+  - 数据独立
+    - 视图可以帮助用户屏蔽真实表结构变化带来的影响。比如，对数据列重新命名，真是表的字段名变化不会改变视图中的字段名
+
+            create or replace view stu_v_4 as select id,studentname as name from student where id<=15；
+
 ### 进阶--视图--案例
+1. 为了保证数据库的安全性，开发人员在操作tb_user表时，只能看到用户的基本字段，屏蔽手机号和邮箱两个个字段
+2. 查询每个学生所选的课程（三张表联查），这个功能在很多的业务中都有使用到，为了简化操作，定义一个视图。
 ### 进阶--存储过程-介绍
+- 介绍
+  - 存储过程是事先经过编译并存储在数据库中的一段sql语句的集合，调用存储过程可以简化应用开发人员的很多工作，减少数据在数据库中和应用服务器之间的传输，对于提高数据处理的效率是有好处的
+  - 存储过程思想上很简单，就是数据库sql语言层面的代码封装与重用。
+- 特点
+  - 封装，复用
+  - 可以接受参数，也可以返回数据
+  - 减少网络交互，效率提升
+[![2023-08-24-180005.png](https://i.postimg.cc/yxc0J93y/2023-08-24-180005.png)](https://postimg.cc/0K5zFzfz)
 ### 进阶--存储过程--基本语法
+- 创建
+  
+            create procedure 存储过程名称（[参数列表]）
+            begin
+                -- sql语句
+            end;
+- 调用(也就是执行封装的sql语句)
+
+           call 名称（[参数]）
+- 查看存储过程
+  
+          select *from information_schema.routinues where rountine_schema='XXX';--查询指定数据库存储过程及状态信息
+          show create procedure 存储过程名称；-- 查询某个存储过程的定义
+- 删除存储过程
+ 
+          drop procedure [if exists] 存储过程名称；
+- **注意**：在命令行中，执行创建存储过程的sql时，需要通过关键字delimiter指定sql语句的结束符
+
+[![2023-08-24-182112.png](https://i.postimg.cc/6pXfZ9Kf/2023-08-24-182112.png)](https://postimg.cc/xc6mDVcX)
+
 ### 进阶--存储过程--变量--系统变量
+- 变量分类
+  - 系统变量
+    - 全局变量
+    - 会话变量
+  - 用户变量
+  - 用户自定义变量
+- 系统变量：是mysql服务器提供，不是用户定义的，属于服务器层面。分为全局变量（global）、会话变量（session）。
+  - 查看系统变量(session ,global可以不指定，默认是session)
+    
+          show [session|global] variables;  -- 查看所有的系统变量
+          show [session|global] variables like '...'  --通过模糊匹配的方式查找变量
+          select @@[session |global] 系统变量名 -- 查看指定变量名
+  - 设置系统变量名
+    
+          set [session|global] 系统变量名=值
+          set @@[session|global].系统变量名=值
+  - 注意：
+    - 如果没有指定session/global,默认是session,会话变量
+    - mysql服务器重新启动之后，所设置的全局参数会失效，如果不想失效，可以在/etc/my.cnf中配置
 ### 进阶--存储过程--变量--用户自定义变量
+- 用户自定义变量：是指用户根据需要自己定义的变量，永辉变量不用提前声明，在用的时候直接使用’@变量名‘使用就可以，其作用域为当前连接。@@是系统变量，@s是用户自定义变量
+- 赋值
+  
+          set @var_name=expr[,@var_name=expr]...;
+          set @var_name:=expr[,@var_name:=expr]...;
+          selectt @var_name:=expr[,@var_name=expr]...;
+          select 字段名 into @var_name from 表名  --从表中查询的数据赋值给 @var_name 
+- 使用
+  
+          select @var_name;
+- 注意：用户自定义的变量不需要对其进行声明或初始化，只不过获取到的值为null。
+
 ### 进阶--存储过程--变量--局部变量
+- **局部变量**：是根据需要定义一的在局部生效的变量，访问之前，需要declare声明。可用作存储过程内的局部变量和输入参数，局部变量的范围是在其内声明的begin...end(procedure封装)块,超出该范围局部变量不可用。
+- 声明
+  
+          declare 变量名 变量类型[default...]
+          declare stu_count int default 0;-- 后面表示默认值是0
+  - 变量类型就是数据库字段类型：int,bigint,char,varchar,date,time等。
+- 赋值
+  
+          set 变量名=值
+          set 变量名:=值
+          select 字段名 into 变量名 from 表名;
+
 ### 进阶--存储过程--if判断
+- if
+  - 语法
+
+          if 条件1 then
+            ...
+          elseif 条件2 then --可选
+            ...
+          else              --可选
+            ...
+          end if;
+- 练习
+
+[![2023-08-24-210234.png](https://i.postimg.cc/rmvJmnrY/2023-08-24-210234.png)](https://postimg.cc/N9kTCxb1)
 ### 进阶--存储过程--参数（in,out,inout）
+- 参数
+  
+类型  | 含义  | 备注
+-----  | ---------  | ------
+in  | 该类参数作为输入，也就是需要调用时传入值  | 默认
+out  | 该类参数作为输出，也就是该参数可以作为返回值  | 
+inout  | 即可以作为输入参数也可以作为输出参数  | 
+
+- 语法
+- 
+          create prodecure 存储过程名称（[in/out/inout 参数名 参数类型]）
+          begin
+             --sql语句
+          end;
+- 练习
+  
+[![2023-08-24-211303.png](https://i.postimg.cc/nrj5zShX/2023-08-24-211303.png)](https://postimg.cc/Mfwt3DRw)
+2. 将传入的200分制的分数进行换算，换算成百分制，然后返回
 ### 进阶--存储过程--case
+- case
+  - 语法一
+  
+          case case_value
+                when when_value1 then statement_list1
+                [when when_value2 then statement_list2]...
+                [else statement_list]
+          end case;
+  - 语法二
+ 
+          case
+              when condition1 then statemen_list1;
+              [when condition2 then statemen_list2;]...
+              [else statemen_list;]
+          end case;
+- 案例
+[![2023-08-24-213957.png](https://i.postimg.cc/G3qWtL15/2023-08-24-213957.png)](https://postimg.cc/G9T7S1tF)
 ### 进阶--存储过程--循环--while
+- while循环是有条件的循环控制语句，满足条件后，再执行循环体中的sql语句。
+- 语法
+#先判断条件，如果条件为true,你们执行逻辑，否则，不执行逻辑
+
+          while 条件 do
+              sql逻辑...
+          end while;
+- 练习
+  - 计算从1累加到n的值，n为传入参数值
 ### 进阶--存储过程--循环--repeat
+- repeate
+  - repeate是有条件的循环控制语句，但满足条件的时候退出循环，具体语法为：
+
+#先执行一次逻辑，然后判断逻辑是否满足，如果满足，那么退出，如果不满足，那么继续下一个循环
+
+          repeat
+                 sql逻辑...
+                 until 条件
+          end repeat;
 ### 进阶--存储过程--循环--loop
+- loop
+  - loop实现简单的循环，如果不在sql逻辑中增加退出循环的条件，可以用其来实现简单的死循环。loop可以配合以下两个语句使用：
+    - leave:配合循环使用，退出循环
+    - iterate:必须用在循环，作用是跳过当前循环剩下的语句，直接进入下一次循环。
+      
+          [lable:] loop 
+              SQL逻辑...
+          end loop[label];
+          
+          leave label:--退出指定标记的循环体
+          iterate label:--直接进行下一次循环
+- 练习
+1. 计算从1到n的累加值，n为传入的参数值
+2. 计算从1到n之间的偶数累加的值，n为传入的参数值。
 ### 进阶--存储过程--游标--cursor
+- 游标
+  - **游标**:是用来存储查询结果集的数据类型，在存储过程和函数中可以使用游标对结果集进行循环的处理。游标的使用包括游标的声明、open、fetch和close，其使用方法如下。
+  - 声明游标
+  - 
+          declare 游标名称 cursor for 查询语句；
+    
+  - 打开游标
+
+          open 游标名称
+  - 获取游标记录
+
+          fetech 游标名称 into 变量[,变量]
+  - 关闭游标
+
+          close 游标名称；
+- 案例：根据传入的参数uage来查询用于年龄小于等于uage的用户姓名（name）和专业（professuim）,并将用户的姓名和专业插入到所创建的一张信标（id,name,profession）中
+- **注意**：注意：普通变量声明在游标声明之前
+- 
 ### 进阶--存储过程--条件处理器--handler
 ### 进阶--存储函数
 ### 进阶--触发器--介绍
@@ -1566,5 +1848,24 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
 ### 进阶--锁--行级锁--间隙锁&临建锁2
 ### 进阶--锁--小结
 ## 进阶--innoDB引擎
-
+### 进阶--innoBD引擎--逻辑存储结构
+### 进阶--innoBD引擎--架构--内存结构1
+### 进阶--innoBD引擎--架构--内存结构2
+### 进阶--innoBD引擎--架构--磁盘结构
+### 进阶--innoBD引擎--架构--后台线程
+### 进阶--innoBD引擎--事务原理--概述
+### 进阶--innoBD引擎--事务原理--redolog
+### 进阶--innoBD引擎--事务原理--undolog
+### 进阶--innoBD引擎--MVCC--基本概念
+### 进阶--innoBD引擎--MVCC--隐藏字段
+### 进阶--innoBD引擎--MVCC--undolog
+### 进阶--innoBD引擎--MVCC--resaview
+### 进阶--innoBD引擎--MVCC--原理分析（RC级别）
+### 进阶--innoBD引擎--MVCC--原理分析（RR级别）
+### 进阶--innoBD引擎--下破解
 ## 进阶--mysql管理
+### 进阶--mysql管理--系统数据库介绍
+### 进阶--mysql管理--常用工具1
+### 进阶--mysql管理--常用工具2
+### 进阶--mysql管理--小结
+### 进阶篇总结
