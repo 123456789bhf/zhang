@@ -1,4 +1,4 @@
-# zhang
+![image](https://github.com/123456789bhf/zhang/assets/116550706/89ac2860-c6f5-4939-ac5a-223d4081e7f8)# zhang
 # SQL笔记
 ## MYSQL
 这不是SQL文件  
@@ -1924,15 +1924,43 @@ delete触发器  | old表示将要或者已经删除的数据，new没有用，�
 - 语法
 
            flush tables wuth read lock;--创建全局锁
-           mysqldump -uroot（用户名） -p1234（密码） itcast>itcast.sql --备份数据库itcast中的数据存放到itcast.sql文件中
+           mysqldump -uroot（用户名） -p1234（密码1314521zcx） itcast>itcast.sql --备份数据库itcast中的数据存放到itcast.sql文件中
            unlock tables;--解锁，此时解除锁定锁
 
 
 [![2023-08-25-212745.png](https://i.postimg.cc/zvMVrqwP/2023-08-25-212745.png)](https://postimg.cc/Mf7W02Fy)
 
 ### 进阶--锁--全局锁--一致数据备份
+- 一旦加入全局锁之后，只能查询数据，不能更新
+[![2023-08-25-215423.png](https://i.postimg.cc/qRZ3kP2S/2023-08-25-215423.png)](https://postimg.cc/34mR1bSF)
+- 下面备份数据库
+[![2023-08-25-215642.png](https://i.postimg.cc/tJWhCXpJ/2023-08-25-215642.png)](https://postimg.cc/K3cK0hKh)
+- 解除锁
+[![2023-08-25-220217.png](https://i.postimg.cc/BnWVg6XY/2023-08-25-220217.png)](https://postimg.cc/QHbmNjg1)
+- 特点
+  - 数据库中加全局锁，是一个比较重的操作，存在以下的问题
+  1. 如果在主库上备份，那么备份期间都不能执行更新，业务基本上就要停摆
+  2. 如果从主库上备份（这样就可以在原来库中进行增删改），那么在备份期间从不能执行主库同步过来的二进制日志（binlog）,会导致从延迟。
+- 在innoDB引擎中，我们可以在备份时加上参数--single-transaction参数来完成不加锁的一致性数据备份
 
+          mysqldump --single-transaction -uroot -p123456 itcast>itcast.sql
+
+[![2023-08-25-220858.png](https://i.postimg.cc/XYm1Jv0c/2023-08-25-220858.png)](https://postimg.cc/Js35YM0G)
+- h后面的是192.168.174.129
 ### 进阶--锁--表级锁--表锁
+- 介绍
+  - 表级锁，每次操作锁住整张表。锁定力度越大，发生锁冲突的概率越高，并发度越底。应用myisam,innoDB,BOB等存储引擎中。
+  - 对于表级锁，分为以下三种
+    1. 表锁
+    2. 元数据锁（meta data lock,MDL）
+    3. 意向锁
+- 表锁
+  - 对于表锁，分为两类
+    1. 表共享锁（read lock）:只能读取不能写入，读锁不会阻塞其他客户端的读，但是会阻塞其他客户端的写
+    2. 表独占锁(write lock)
+  - 语法
+    1. 加锁：lock tables 表名 ...read（读锁）/write（写锁）
+    2. 释放锁：unlock tables /客户端断开连接
 ### 进阶--锁--表级锁--元数据锁
 ### 进阶--锁--表级锁--意向锁
 ### 进阶--锁--表级锁--意向锁--测试
