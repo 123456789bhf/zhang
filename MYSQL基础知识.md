@@ -1826,18 +1826,112 @@ inout  | 即可以作为输入参数也可以作为输出参数  |
           close 游标名称；
 - 案例：根据传入的参数uage来查询用于年龄小于等于uage的用户姓名（name）和专业（professuim）,并将用户的姓名和专业插入到所创建的一张信标（id,name,profession）中
 - **注意**：注意：普通变量声明在游标声明之前
-- 
 ### 进阶--存储过程--条件处理器--handler
+- 条件处理程序
+  - 条件处理程序：可以用来定于在流程控制结构执行过程中遇到问题时相应的处理步骤。
+  - 语法
+          declare handle_action handler for condition_value [,condition_value]...statement;
+    
+          hander_action
+              continue:继续执行当前程序
+              exit:停止执行当前程序
+          condition_value
+              sqlstate sqlstate_value:异常的状态码，如02000
+              sqlwarning:所有以01开异常状态码头的sqlstate代码的简写
+              not found:所有以02开头的异常状态码sqlstate代码的简写
+              sqlexception:所有没有被sqlwarning或not found铺货的sqlstate代码的简写
 ### 进阶--存储函数
+- 存储函数
+  - 存储函数是有返回值的存储过程，存储函数的参数只能是in（输入)类型的。也就是存储函数必须有返回值，并且参数只能是输入类型
+  - 语法
+  
+          create function 存储函数名称（[参数列表]）
+          returns type[characteristic...]  ——type:返回参数的类型
+          begin
+               -- sql语句
+              return....
+           
+          end;
+          
+          characterstic说明
+          - determinstic:相同输入参数总是产生相同的结果，也就是传入的参数一样返回值也是一样的
+          - no sql:不包含sql语句
+          - reads sql data:包含读取数据的sql语句，但不包含写入数据的语句
+- 案例
+  - 从1到n的累加
+- 存储函数用的少，因为存储函数的地方一定可以使用存储过程，并且存储函数必须有返回值，所以存储过程的用的更多。
 ### 进阶--触发器--介绍
+- 触发器是与表有关的数据库对象，指在insert/update/delete之前或之后，触发并执行触发器中定义的SQL语句集合。触发器的这种特性可以协助应用在数据库端确保数据的完整性，日志记录，数据校验等操作。
+- 使用别名old和new来引用触发器中发生变化的记录内容，这与其它的数据库是相似的。现在触发器还只支持行级触发，不支持语句级触发。
+- 行级触发器：如果一个update语句影响了五行数据，并且触发了五次，这种称为行级触发器
+- 语句级触发器：执行一条update，不管update影响了多少行，只能触发一次
+
+触发器类型  | new和old
+-----  | ------
+insert触发器  | new表示将要或者已经新增的数据。old没有用
+update触发器  | old表示修改之前的数据，new表示将要或者修改后的数据
+delete触发器  | old表示将要或者已经删除的数据，new没有用，因为数据已经删除
 ### 进阶--触发器--案例1（insert类型）
+- 语法
+  - 创建（对哪张表的数据在增删改之前还是之后触发）
+    
+          create trigger trigger_name
+          before/after insert/update/delete --在增删改之前还是之后
+          on tbl_name for each row   --行级触发器
+          begin
+                trigger_stmt; --具体的逻辑实现
+          end;
+  - 查看
+  
+          show triggers;
+  - 删除
+  
+          drop trigger [schema_name（数据库的名字）]trigger_name; --如果没有指定schema_name，默认为当前数据库。
+- 练习
+  - 通过触发器记录tb_user表的数据变更体制，将变更日志插入到日志表user_log中，包括增加，删除，更新
+
+
 ### 进阶--触发器--案例2（update类型）
+- 修改数据的触发器
 ### 进阶--触发器--案例3（delete类型）
+- 删除数据的触发器
 ### 进阶--视图/存储过程/触发器--小结
+[![2023-08-25-204609.png](https://i.postimg.cc/nLkSNPM9/2023-08-25-204609.png)](https://postimg.cc/PLCMwKWd)
 ## 进阶--锁
+
 ### 进阶--锁--介绍
+- 介绍
+  - 锁是计算机协调多个进程或线程并访问某一资源的机制。在数据库中描绘，除传统的计算资源（cpu,RAM,I/O）的征用以外，数据也是一种供许多用户共享的资源。如何保证数据并发访问的一致性、有效性是所有数据库必须解决的一个问题，锁冲突也是影响数据库并发访问性能的一个重要因素。从这个角度来说，锁对数据库而言尤其重要，也更加复杂。
+- 分类：mysql中的锁，按照锁的颗粒度分，分为以下三类
+  1. 全局锁：锁定数据库中的所有表，范围最大
+  2. 表级锁：每次操作锁住整张表
+  3. 行级锁：每次操作锁住对应的行数据，范围最小
+    
 ### 进阶--锁--全局锁--介绍
+- 介绍
+  - 全局锁就是对整个数据库实例加锁，加锁后整个实例就处于只读状态，后续的DML的写语句，DDL语句，已经更新操作的事务提交语句都将被阻塞。
+  - 典型的使用场景是做全库的逻辑备份，对所有的表进行锁定，从而获取一致性视图，保证数据的完整性。（为什么备份数据时候，需要对表进行锁定？）
+  - 备份完tb_stock数据之后，又有业务进行，那么后面的两张表改变，第一个备份的数据没有改变，违背数据一致性
+
+ 
+[![2023-08-25-212213.png](https://i.postimg.cc/tJDN52td/2023-08-25-212213.png)](https://postimg.cc/K3kTc7W4)
+
+  - mysqldump是数据备份的东西
+
+
+[![2023-08-25-212327.png](https://i.postimg.cc/yxf0SqmF/2023-08-25-212327.png)](https://postimg.cc/9w7DvnNM)
+
+- 语法
+
+           flush tables wuth read lock;--创建全局锁
+           mysqldump -uroot（用户名） -p1234（密码） itcast>itcast.sql --备份数据库itcast中的数据存放到itcast.sql文件中
+           unlock tables;--解锁，此时解除锁定锁
+
+
+[![2023-08-25-212745.png](https://i.postimg.cc/zvMVrqwP/2023-08-25-212745.png)](https://postimg.cc/Mf7W02Fy)
+
 ### 进阶--锁--全局锁--一致数据备份
+
 ### 进阶--锁--表级锁--表锁
 ### 进阶--锁--表级锁--元数据锁
 ### 进阶--锁--表级锁--意向锁
@@ -1869,3 +1963,8 @@ inout  | 即可以作为输入参数也可以作为输出参数  |
 ### 进阶--mysql管理--常用工具2
 ### 进阶--mysql管理--小结
 ### 进阶篇总结
+# 运维
+## 运维--日志--错误日志
+## 运维--日志--二进制日志
+## 运维--日志--查询日志
+## 运维--日志--慢查询日志
