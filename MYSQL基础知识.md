@@ -2187,18 +2187,107 @@ select ... for update  | 排他锁 | 需要手动在select之后加for update
 ### 进阶--innoBD引擎--MVCC--基本概念
 - 当前读
   - 读取的是记录的最新版本，读取时还要保证其他并发事务不能修改当前记录，会对读取的记录进行加锁。对于我们日常的操作，如：select...lock in share mode(共享锁)，select...for update,update,insert,delete（排他锁）都是一种当前读
-  - 
+- 快照读
+  - 简单的select(不加锁)就是快照读，读的是记录数据的可见版本，有可能是历史数据，不加锁，是非阻塞读。
+    - read committed:每次select都生成一个快照读
+    - repeatable read:开启事务之后第一个select语句才是快照读的地方
+    - serializable:快照读会退化为当前读
+- MVCC
+  - 全程multi-version concurrency control ,多版本并发控制。只维护一个数据的多个版本，使得读写操作没有冲突，快照读为mysql实现MVCC提供了一个非阻塞读的功能。MVCC的具体实现还需要依赖于数据库记录中的三个隐式字段、undo log日志、readview;
 ### 进阶--innoBD引擎--MVCC--隐藏字段
+- 记录中的隐藏字段：有两个或者三个，取决于当前表有没有主键
+  - 后面三个是隐式字段
+
+[![2023-08-26-205508.png](https://i.postimg.cc/mr2LZSp0/2023-08-26-205508.png)](https://postimg.cc/HrRDBbg2)
+- 语法
+
+          ibd2sdi stu.idb -- 查询数据表stu的idb文件，下面是表的隐藏字段
+  
+[![2023-08-26-205848.png](https://i.postimg.cc/65nnC96B/2023-08-26-205848.png)](https://postimg.cc/bsYZhf25)
+[![2023-08-26-205906.png](https://i.postimg.cc/rytrL8r5/2023-08-26-205906.png)](https://postimg.cc/3WYRXQ9w)
 ### 进阶--innoBD引擎--MVCC--undolog
-### 进阶--innoBD引擎--MVCC--resaview
+- undo log
+  - 回滚日志，在insert、update\delete的时候产生的便于数据回滚的日志
+  - 当insert的时候，产生的undo log日志只在回滚时需要，在事务提交之后可被立即删除
+  - 而update、delete的时候，产生的undo log日志不仅在回滚时候需要，在快照读时也需要，不会被立即删除。
+- undo log版本链
+- 
+[![2023-08-26-211118.png](https://i.postimg.cc/hthkj31W/2023-08-26-211118.png)](https://postimg.cc/Mn2P35Ld)
+
+[![2023-08-26-211231.png](https://i.postimg.cc/rFZHvNXh/2023-08-26-211231.png)](https://postimg.cc/8jWwvWCW)
+
+[![2023-08-26-211327.png](https://i.postimg.cc/htJYgQKK/2023-08-26-211327.png)](https://postimg.cc/75k9n6CR)
+
+[![2023-08-26-211352.png](https://i.postimg.cc/Wzb9yh9L/2023-08-26-211352.png)](https://postimg.cc/MMNbMK2d)
+
+- 不同事务或相同事务对同一条记录进行修改，会导致该记录的undolog生成一条记录版本链表，链表的头部是最新的旧纪录，链表尾部是最早的旧记录。
+### 进阶--innoBD引擎--MVCC--readview
+- readview
+  - readview（读视图）：是快照读sql执行时MVCC提取数据的依据，记录并维护系统当前活跃事务（未提交的）i，也就是readview决定了到底读取哪一条事务记录
+  - readview中包含了四个核心字段,其提取就是依据这四个核心字段
+
+字段 | 含义
+-----  | ------
+m_ids  | 当前活跃的事务ID集合
+min_trx_id  | 最小活跃事务ID
+max_trx_id  | 预分配事务ID,当前最大事务ID+1(因为事务ID是自增的),也就是下一个事务ID
+creator_trx_id  | readview创建者的事务ID
+
+[![2023-08-26-214713.png](https://i.postimg.cc/rsxXNhwZ/2023-08-26-214713.png)](https://postimg.cc/CnhQFsDb)
 ### 进阶--innoBD引擎--MVCC--原理分析（RC级别）
+- 第一条：最上面一条记录是trx_id是4， 不满足右边的四条规则，进行下一条数据的读取，下一条是3，3也不满足右边的四条规则，继续下一条记录，是2，2满足右边的第二个条件，此时快照读就是左边的第三条记录，将当前版本记录30 3 A30 2 0x00003直接返回,也就是事务2的记录。
+- 第二条:左边的第2条记录满足右边的第2个条件，直接返回该版本的记录即可
+
+[![2023-08-26-220226.png](https://i.postimg.cc/4d5X9fB2/2023-08-26-220226.png)](https://postimg.cc/wy1KKpKD)
 ### 进阶--innoBD引擎--MVCC--原理分析（RR级别）
-### 进阶--innoBD引擎--下破解
+[![2023-08-26-220418.png](https://i.postimg.cc/bYgQz1Hk/2023-08-26-220418.png)](https://postimg.cc/Bt88pLzn)
+
+[![2023-08-26-220543.png](https://i.postimg.cc/VkQspVrR/2023-08-26-220543.png)](https://postimg.cc/KRfygQ5k)
+### 进阶--innoBD引擎--小结
+[![2023-08-26-221020.png](https://i.postimg.cc/vZgqg03p/2023-08-26-221020.png)](https://postimg.cc/sMz9b4Fc)
 ## 进阶--mysql管理
+- 系统数据库
+- 常用工具
+
 ### 进阶--mysql管理--系统数据库介绍
+- 系统数据库
+  - mysql数据库安装完成后，自带了四个数据库，具体操作如下：
+
+数据库 | 含义
+---  | -------
+mysql  | 存储mysql服务器正常运行所需要的各种信息（时区、主从、用户、权限），user表中存储了有哪些数据库可以访问，以及相关权限
+information_schema  | 提供了访问数据库元数据的各种表和视图，包含数据库、库、字段类型以及访问权限等，engine:innoDB支持的各种引擎
+performance_schema  | 为mysql服务器运行时状态提供了一个底层监控功能，主要用于收集数据库服务器性能参数。
+sys  | 包含了一系列方便DBA和开发人员利用performance_schema性能数据库进行性能调优和诊断的视图
 ### 进阶--mysql管理--常用工具1
+- mysql
+[![2023-08-26-223724.png](https://i.postimg.cc/FKgj76JF/2023-08-26-223724.png)](https://postimg.cc/f3y3PBK1)
+
+          mysql -h192.168.174.129 -uroot -p1314521zcx itcast -e "select * from stu"--此时没有进入sql里面
+- mysqladmin
+
+[![2023-08-26-224357.png](https://i.postimg.cc/rsFHsWns/2023-08-26-224357.png)](https://postimg.cc/Pp9yFLkn)
+
+          mysqladmin -uroot -p1314521zcx version --查看当前数据库版本
+          mysqladmin -uroot -p1314521zcx variables --查看当前系统变量以及对应的值
+          mysqladmin -uroot -p1314521zcx create db02；--创建数据库，此时并没有登录进去
+          mysqladmin -uroot -p1314521zcx -e "show database";
+          mysqladmin -uroot -p1314521zcx drop db02;
+- mysqlbinglog
+
+[![2023-08-26-224501.png](https://i.postimg.cc/tTRkNbhm/2023-08-26-224501.png)](https://postimg.cc/p97KPgcD)
+
+          cd/var/lib/mysql; --查看二进制日志，二进制日志的默认编号是从000001往上编的，前面的会自动清理
+          mysqlbinglog -s -binlog.000008;--binlog.000008是二进制文件
+- mysqlshow
+
+[![2023-08-26-225302.png](https://i.postimg.cc/tTCJ5q2f/2023-08-26-225302.png)](https://postimg.cc/t1w9Rj0t)
+
+          mysqlshow -uroot -p1234 db01 course id --count;--表的某一具体字段
 ### 进阶--mysql管理--常用工具2
+
 ### 进阶--mysql管理--小结
+
 ### 进阶篇总结
 # capter3 运维
 ## 运维--日志
@@ -2216,3 +2305,169 @@ select ... for update  | 排他锁 | 需要手动在select之后加for update
 ### 运维--分库分表--mycat概述--安装
 ### 运维--分库分表--mycat概述--核心概念
 ### 运维--分库分表-
+# 数据类型
+
+## 整型
+
+| 类型名称      | 取值范围                                  | 大小    |
+| ------------- | ----------------------------------------- | ------- |
+| TINYINT       | -128〜127                                 | 1个字节 |
+| SMALLINT      | -32768〜32767                             | 2个宇节 |
+| MEDIUMINT     | -8388608〜8388607                         | 3个字节 |
+| INT (INTEGHR) | -2147483648〜2147483647                   | 4个字节 |
+| BIGINT        | -9223372036854775808〜9223372036854775807 | 8个字节 |
+
+无符号在数据类型后加 unsigned 关键字。
+
+## 浮点型
+
+| 类型名称            | 说明               | 存储需求   |
+| ------------------- | ------------------ | ---------- |
+| FLOAT               | 单精度浮点数       | 4 个字节   |
+| DOUBLE              | 双精度浮点数       | 8 个字节   |
+| DECIMAL (M, D)，DEC | 压缩的“严格”定点数 | M+2 个字节 |
+
+## 日期和时间
+
+| 类型名称  | 日期格式            | 日期范围                                          | 存储需求 |
+| --------- | ------------------- | ------------------------------------------------- | -------- |
+| YEAR      | YYYY                | 1901 ~ 2155                                       | 1 个字节 |
+| TIME      | HH:MM:SS            | -838:59:59 ~ 838:59:59                            | 3 个字节 |
+| DATE      | YYYY-MM-DD          | 1000-01-01 ~ 9999-12-3                            | 3 个字节 |
+| DATETIME  | YYYY-MM-DD HH:MM:SS | 1000-01-01 00:00:00 ~ 9999-12-31 23:59:59         | 8 个字节 |
+| TIMESTAMP | YYYY-MM-DD HH:MM:SS | 1980-01-01 00:00:01 UTC ~ 2040-01-19 03:14:07 UTC | 4 个字节 |
+
+## 字符串
+
+| 类型名称   | 说明                                         | 存储需求                                                   |
+| ---------- | -------------------------------------------- | ---------------------------------------------------------- |
+| CHAR(M)    | 固定长度非二进制字符串                       | M 字节，1<=M<=255                                          |
+| VARCHAR(M) | 变长非二进制字符串                           | L+1字节，在此，L< = M和 1<=M<=255                          |
+| TINYTEXT   | 非常小的非二进制字符串                       | L+1字节，在此，L<2^8                                       |
+| TEXT       | 小的非二进制字符串                           | L+2字节，在此，L<2^16                                      |
+| MEDIUMTEXT | 中等大小的非二进制字符串                     | L+3字节，在此，L<2^24                                      |
+| LONGTEXT   | 大的非二进制字符串                           | L+4字节，在此，L<2^32                                      |
+| ENUM       | 枚举类型，只能有一个枚举字符串值             | 1或2个字节，取决于枚举值的数目 (最大值为65535)             |
+| SET        | 一个设置，字符串对象可以有零个或 多个SET成员 | 1、2、3、4或8个字节，取决于集合 成员的数量（最多64个成员） |
+
+## 二进制类型
+
+| 类型名称       | 说明                 | 存储需求               |
+| -------------- | -------------------- | ---------------------- |
+| BIT(M)         | 位字段类型           | 大约 (M+7)/8 字节      |
+| BINARY(M)      | 固定长度二进制字符串 | M 字节                 |
+| VARBINARY (M)  | 可变长度二进制字符串 | M+1 字节               |
+| TINYBLOB (M)   | 非常小的BLOB         | L+1 字节，在此，L<2^8  |
+| BLOB (M)       | 小 BLOB              | L+2 字节，在此，L<2^16 |
+| MEDIUMBLOB (M) | 中等大小的BLOB       | L+3 字节，在此，L<2^24 |
+| LONGBLOB (M)   | 非常大的BLOB         | L+4 字节，在此，L<2^32 |
+
+# 权限一览表
+
+> 具体权限的作用详见[官方文档](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html "官方文档")
+
+GRANT 和 REVOKE 允许的静态权限
+
+| Privilege                                                    | Grant Table Column           | Context                               |
+| :----------------------------------------------------------- | :--------------------------- | :------------------------------------ |
+| [`ALL [PRIVILEGES]`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_all) | Synonym for “all privileges” | Server administration                 |
+| [`ALTER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_alter) | `Alter_priv`                 | Tables                                |
+| [`ALTER ROUTINE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_alter-routine) | `Alter_routine_priv`         | Stored routines                       |
+| [`CREATE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create) | `Create_priv`                | Databases, tables, or indexes         |
+| [`CREATE ROLE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-role) | `Create_role_priv`           | Server administration                 |
+| [`CREATE ROUTINE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-routine) | `Create_routine_priv`        | Stored routines                       |
+| [`CREATE TABLESPACE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-tablespace) | `Create_tablespace_priv`     | Server administration                 |
+| [`CREATE TEMPORARY TABLES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-temporary-tables) | `Create_tmp_table_priv`      | Tables                                |
+| [`CREATE USER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-user) | `Create_user_priv`           | Server administration                 |
+| [`CREATE VIEW`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_create-view) | `Create_view_priv`           | Views                                 |
+| [`DELETE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) | `Delete_priv`                | Tables                                |
+| [`DROP`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_drop) | `Drop_priv`                  | Databases, tables, or views           |
+| [`DROP ROLE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_drop-role) | `Drop_role_priv`             | Server administration                 |
+| [`EVENT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_event) | `Event_priv`                 | Databases                             |
+| [`EXECUTE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_execute) | `Execute_priv`               | Stored routines                       |
+| [`FILE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_file) | `File_priv`                  | File access on server host            |
+| [`GRANT OPTION`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_grant-option) | `Grant_priv`                 | Databases, tables, or stored routines |
+| [`INDEX`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_index) | `Index_priv`                 | Tables                                |
+| [`INSERT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert) | `Insert_priv`                | Tables or columns                     |
+| [`LOCK TABLES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_lock-tables) | `Lock_tables_priv`           | Databases                             |
+| [`PROCESS`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_process) | `Process_priv`               | Server administration                 |
+| [`PROXY`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_proxy) | See `proxies_priv` table     | Server administration                 |
+| [`REFERENCES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_references) | `References_priv`            | Databases or tables                   |
+| [`RELOAD`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_reload) | `Reload_priv`                | Server administration                 |
+| [`REPLICATION CLIENT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-client) | `Repl_client_priv`           | Server administration                 |
+| [`REPLICATION SLAVE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-slave) | `Repl_slave_priv`            | Server administration                 |
+| [`SELECT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_select) | `Select_priv`                | Tables or columns                     |
+| [`SHOW DATABASES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_show-databases) | `Show_db_priv`               | Server administration                 |
+| [`SHOW VIEW`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_show-view) | `Show_view_priv`             | Views                                 |
+| [`SHUTDOWN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_shutdown) | `Shutdown_priv`              | Server administration                 |
+| [`SUPER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_super) | `Super_priv`                 | Server administration                 |
+| [`TRIGGER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_trigger) | `Trigger_priv`               | Tables                                |
+| [`UPDATE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) | `Update_priv`                | Tables or columns                     |
+| [`USAGE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_usage) | Synonym for “no privileges”  | Server administration                 |
+
+GRANT 和 REVOKE 允许的动态权限
+
+| Privilege                                                    | Context                                           |
+| :----------------------------------------------------------- | :------------------------------------------------ |
+| [`APPLICATION_PASSWORD_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_application-password-admin) | Dual password administration                      |
+| [`AUDIT_ABORT_EXEMPT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_audit-abort-exempt) | Allow queries blocked by audit log filter         |
+| [`AUDIT_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_audit-admin) | Audit log administration                          |
+| [`AUTHENTICATION_POLICY_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_authentication-policy-admin) | Authentication administration                     |
+| [`BACKUP_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_backup-admin) | Backup administration                             |
+| [`BINLOG_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_binlog-admin) | Backup and Replication administration             |
+| [`BINLOG_ENCRYPTION_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_binlog-encryption-admin) | Backup and Replication administration             |
+| [`CLONE_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_clone-admin) | Clone administration                              |
+| [`CONNECTION_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_connection-admin) | Server administration                             |
+| [`ENCRYPTION_KEY_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_encryption-key-admin) | Server administration                             |
+| [`FIREWALL_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_firewall-admin) | Firewall administration                           |
+| [`FIREWALL_EXEMPT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_firewall-exempt) | Firewall administration                           |
+| [`FIREWALL_USER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_firewall-user) | Firewall administration                           |
+| [`FLUSH_OPTIMIZER_COSTS`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_flush-optimizer-costs) | Server administration                             |
+| [`FLUSH_STATUS`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_flush-status) | Server administration                             |
+| [`FLUSH_TABLES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_flush-tables) | Server administration                             |
+| [`FLUSH_USER_RESOURCES`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_flush-user-resources) | Server administration                             |
+| [`GROUP_REPLICATION_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_group-replication-admin) | Replication administration                        |
+| [`GROUP_REPLICATION_STREAM`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_group-replication-stream) | Replication administration                        |
+| [`INNODB_REDO_LOG_ARCHIVE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_innodb-redo-log-archive) | Redo log archiving administration                 |
+| [`NDB_STORED_USER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_ndb-stored-user) | NDB Cluster                                       |
+| [`PASSWORDLESS_USER_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_passwordless-user-admin) | Authentication administration                     |
+| [`PERSIST_RO_VARIABLES_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_persist-ro-variables-admin) | Server administration                             |
+| [`REPLICATION_APPLIER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-applier) | `PRIVILEGE_CHECKS_USER` for a replication channel |
+| [`REPLICATION_SLAVE_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-slave-admin) | Replication administration                        |
+| [`RESOURCE_GROUP_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_resource-group-admin) | Resource group administration                     |
+| [`RESOURCE_GROUP_USER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_resource-group-user) | Resource group administration                     |
+| [`ROLE_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_role-admin) | Server administration                             |
+| [`SESSION_VARIABLES_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_session-variables-admin) | Server administration                             |
+| [`SET_USER_ID`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_set-user-id) | Server administration                             |
+| [`SHOW_ROUTINE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_show-routine) | Server administration                             |
+| [`SYSTEM_USER`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_system-user) | Server administration                             |
+| [`SYSTEM_VARIABLES_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_system-variables-admin) | Server administration                             |
+| [`TABLE_ENCRYPTION_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_table-encryption-admin) | Server administration                             |
+| [`VERSION_TOKEN_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_version-token-admin) | Server administration                             |
+| [`XA_RECOVER_ADMIN`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_xa-recover-admin) | Server administration                             |
+
+# 图形化界面工具
+
+- Workbench(免费): http://dev.mysql.com/downloads/workbench/
+- navicat(收费，试用版30天): https://www.navicat.com/en/download/navicat-for-mysql
+- Sequel Pro(开源免费，仅支持Mac OS): http://www.sequelpro.com/
+- HeidiSQL(免费): http://www.heidisql.com/
+- phpMyAdmin(免费): https://www.phpmyadmin.net/
+- SQLyog: https://sqlyog.en.softonic.com/
+
+# 安装
+
+# 小技巧
+
+1. 在SQL语句之后加上`\G`会将结果的表格形式转换成行文本形式
+2. 查看Mysql数据库占用空间：
+```mysql
+SELECT table_schema "Database Name"
+     , SUM(data_length + index_length) / (1024 * 1024) "Database Size in MB"
+FROM information_schema.TABLES
+GROUP BY table_schema;
+```
+
+# 参考文献
+> https://dhc.pythonanywhere.com/entry/share/?key=3ad29aad765a2b98b2b2a745d71bef715507ee9db8adbec98257bac0ad84cbe4#h1-u6743u9650u4E00u89C8u8868
+> 这篇笔记是在别人的基础上完善而来，感谢B站的黑马程序员up主，也感谢路途博客。
