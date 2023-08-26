@@ -1,8 +1,4 @@
-![image](https://github.com/123456789bhf/zhang/assets/116550706/89ac2860-c6f5-4939-ac5a-223d4081e7f8)# zhang
-# SQL笔记
-## MYSQL
-这不是SQL文件  
-那么就开始学习吧
+
 # chaptre1 MRSQL基础篇
 # 第一章 基础
 ## 第一节 MYSQL概述
@@ -1991,7 +1987,7 @@ alter table...  | excusive  | 与其他的MDL都互斥
 [![2023-08-26-103207.png](https://i.postimg.cc/59RYHgJw/2023-08-26-103207.png)](https://postimg.cc/t7FCwhYT)
 - 查看元数据锁(查询系统中的metadata_locks，这里面存储了元数据所
   
-          select object_type,objet_schema,object_name,lock_type,lock_duration from performance_schema,metadata_locks;
+          select object_type,objet_schema,object_name,lock_type,lock_duration from performance_schema.metadata_locks;
 
 [![2023-08-26-103708.png](https://i.postimg.cc/VkbVyKf4/2023-08-26-103708.png)](https://postimg.cc/75wV0MTT)
 - 下面是左边执行了select语句右边执行了alter语句，这时候有新加了一个锁，并且是不兼容的，此时处于阻塞状态
@@ -1999,16 +1995,148 @@ alter table...  | excusive  | 与其他的MDL都互斥
 
 
 ### 进阶--锁--表级锁--意向锁
+- 左边是加了行锁，右边加了表锁此时之间会冲突，此时右边的会判定是否加了行锁，从第一条数据出发一直到最后一行数据，此时效率极低，为了提高效率，避免DML执行时，家的行锁与表锁的冲突，在innoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。
+- 意向锁主要解决innoDB引擎中的行锁与表锁之间冲突的问题
+  - 一开始没有使用意向锁的时候
+  
+[![2023-08-26-104648.png](https://i.postimg.cc/SxvDD5wD/2023-08-26-104648.png)](https://postimg.cc/Mn17GsZQ)
+  - 使用了意向锁之后：左边的会先添加行锁之后再添加意向锁，右边的再添加了表锁之后，会检查当前表的意向锁，如果意向锁与表锁之间是兼容的，那么会运行，如果不兼容，右侧会处于阻塞状态，直到左边的意向锁释放。此时不用每行检查。
+[![2023-08-26-105012.png](https://i.postimg.cc/3JPk1Ft2/2023-08-26-105012.png)](https://postimg.cc/mtyZ2Cfr)
+- 分类
+  1. 意向共享锁（IS）:由语句select...lock in share mode添加,也就是需要我们手动添加
+  2. 意向排他锁（IX）:由insert,update,delete,select...for update添加
+- 兼容情况
+  1.  意向共享锁（IS）:与表锁共享锁（read）兼容，与表锁排他锁（write）互斥。
+  2. 意向排他锁（IX）与表锁共享锁（read）以及排他锁（write）都互斥。意向锁之间不会互斥。
+- 语法：查看意向锁以及行锁的加锁情况
+  
+          select objet_schema,object_name,index_name,lock_type,lock_mode,lock_data from performance_schema.data_locks;
+
 ### 进阶--锁--表级锁--意向锁--测试
+- 意向共享锁IS与read的表锁之间是兼容的，所以能创建read的表锁，意向共享锁IS与write的表锁之间是互斥的的，所以能会阻塞，直到左边提交事务。
+[![2023-08-26-110718.png](https://i.postimg.cc/qvc4VsGf/2023-08-26-110718.png)](https://postimg.cc/bZvK12ML)
+- 意向排他锁IX与read之间互斥，所以会处于阻塞状态
+[![2023-08-26-110718.png](https://i.postimg.cc/qvc4VsGf/2023-08-26-110718.png)](https://postimg.cc/bZvK12ML)
+
 ### 进阶--锁--行级锁--介绍
+- 行级锁：每次操作锁住对应的行数据。锁定粒度最小，发生锁冲突的改率最低，并发度最高。在innoDB存储引擎中。innoDB支持行级锁，但是MYISAM是不支持行级锁的
+- innoDB的数据是基于索引组织的，行锁是通过对索引上的索引项加锁来实现的（索引结构是B+tree，分为聚集索引以及二级索引，聚集索引下面挂的是行数据，二级索引下面是id值，行数据是基于聚集索引的，并且B+Tree下面的叶子节点是顺序存储的），而不是对记录加的锁。对于行级锁，主要分为以下三类：
+- 分类
+  1. 行锁（record lock）:锁定单个行记录，防止其他食物对此进行update和delete，在RC，RR隔离级别下都支持。
+  2. 间隙锁（gap lock）:锁定索引记录间隙（不含该记录），确保索引记录间隙不变，防止其他事务在这个间隙进行insert,产生幻读。在RR隔离级别下都支持。比如6到12之间的间隙，不包含6和12，16到18之间的间隙
+[![2023-08-26-112119.png](https://i.postimg.cc/DyNk9CGY/2023-08-26-112119.png)](https://postimg.cc/jLyFN4Zz)
+  3. 临建锁（next-key lock）:行锁和间隙锁的组合，同时锁住数据，并锁住数据前面的间隔gap。在RR隔离级别下支持。
+[![2023-08-26-112301.png](https://i.postimg.cc/DzgCTZDy/2023-08-26-112301.png)](https://postimg.cc/2q1ddzrP)
 ### 进阶--锁--行级锁--行锁
+- 行锁
+  - innnoDB实现了以下两种类型的行锁
+    1. 共享锁（S）：允许一个事务去读一行，组织其他事务获得相同数据集的排他锁，也就是共享锁与共享锁之间兼容，与排他锁之间互斥。
+    2. 排他锁（X）：允许获取排他锁的事务更新数据，阻止其他事务获得相同数据集的共享锁和排他锁，也就是第一个事务获取了某一数据的排他锁，其他事务就不能获得共享锁和排他锁
+   - **解释**
+     - 事务a获取了共享锁，那么事务b也可以获取共享锁，
+     - 事务a获取了共享锁，那么事务b不可以获取排他锁
+
+当前锁类型\请求锁类型  | S(共享锁)  | X(排他锁）
+-----  | ----  |------
+S(共享锁)  | 兼容  | 冲突
+X(排他锁)  | 冲突  | 冲突
+
+- 行锁
+
+sql  | 行锁类型  | 说明
+------  | ------  | ------
+insert  | 排他锁 | 自动加锁
+update  | 排他锁 | 自动加锁
+delete  | 排他锁 | 自动加锁
+select(正常)  | 不加任何锁  | 
+select ...lock in share mode  | 共享锁 | 需要手动在select之后加lock in share mode
+select ... for update  | 排他锁 | 需要手动在select之后加for update
+- 演示
+  - 在默认情况下，innoDB在repeatable read事务隔离级别运行，innoDB使用next-key锁进行搜索和索引扫描，以防幻读。
+  1. 针对唯一索引进行检索时，对已经存在的记录进行等值匹配，将会自动化优化为行锁
+  2. innoDB行锁是针对索引加的锁，不通过索引条件检索数据，那么innoDB将对表中的所有记录加锁，此时就会升级为表锁
+- 语法：通过以下sql语句，查看意向锁以及行锁的加锁情况
+          elect objet_schema,object_name,index_name,lock_type,lock_mode,lock_data from performance_schema.data_locks;
+  
+[![2023-08-26-122423.png](https://i.postimg.cc/gJFbZ0dW/2023-08-26-122423.png)](https://postimg.cc/cKmzq0r9)
+- 共享锁与共享锁之间兼容
+
+[![2023-08-26-122829.png](https://i.postimg.cc/htTrG4Cx/2023-08-26-122829.png)](https://postimg.cc/zyDWtNYX)
+- id为1的数据加了共享锁，共享锁与排他锁之间互斥，所以阻塞状态
+  
+[![2023-08-26-123017.png](https://i.postimg.cc/d1xdBgHw/2023-08-26-123017.png)](https://postimg.cc/njqCVSfP)
+- 左侧排他锁，右侧也是，所以回阻塞，直到左边的解锁
+  
+[![2023-08-26-123117.png](https://i.postimg.cc/c4qTG8hZ/2023-08-26-123117.png)](https://postimg.cc/23wn4ygX)
+- 2. innoDB行锁是针对索引加的锁，不通过索引条件检索数据，那么innoDB将对表中的所有记录加锁，此时就会升级为表锁
+- 左边加上了行锁（update）,因为name没有索引，那么innoDB将对表中的所有记录加锁，此时就会升级为表锁，表锁与行锁互斥，所以右边阻塞
+
+[![2023-08-26-123450.png](https://i.postimg.cc/8CqffLjz/2023-08-26-123450.png)](https://postimg.cc/TyJ3ZLVz)
+- 左侧是行锁，name有索引，右边的不会升级为表锁此时可以执行成功。
+  
+[![2023-08-26-123538.png](https://i.postimg.cc/vm9HjkZG/2023-08-26-123538.png)](https://postimg.cc/hJDBQCmY)
 ### 进阶--锁--行级锁--间隙锁&临建锁1
+- 演示
+  - 默认情况下，innoDB在repeatable read事务隔离级别运行，innoDB使用next-key（临建锁）锁进行搜索和索引扫描，以防幻读。
+  1. 索引上的等值查询（唯一索引），给不存在的记录加锁时，此时将优化为间隙锁
+  2. 索引上的等值查询（普通索引），向右遍历时最后一个值不满足查询需求时，next-key lock退化为间隙锁。
+  3. 索引上的查询范围（唯一索引）--访问到不满足条件的第一个值为止。
+
+[![2023-08-26-154236.png](https://i.postimg.cc/bJBRh5zJ/2023-08-26-154236.png)](https://postimg.cc/KktT7J3S)
+- **注意：**
+  - **间隙锁唯一目的**是防止其他事务插入间隙。间隙锁可以共存，一个事务采用的间隙不会阻止另一个事务在同一间隙上采用间隙锁。
+  - 间隙锁包含的是两个数据之间的间隙，不包含这两个数据，临建锁包含了这两个数据，还包含了这两个数据之间的间隙。
+- 演示
+  -  1. 索引上的等值查询（唯一索引），给不存在的记录加锁时，此时将优化为间隙锁
+  - record是行级锁，x是排他锁，gap是间隙锁，是3到8之间的间隙（不包括3和8），此时之间的数据没法插入，处于阻塞状态
+    
+[![2023-08-26-154105.png](https://i.postimg.cc/28JgwHhC/2023-08-26-154105.png)](https://postimg.cc/nC4dVG3W)
 ### 进阶--锁--行级锁--间隙锁&临建锁2
+- 2. 索引上的等值查询（普通索引），向右遍历时最后一个值不满足查询需求时，next-key lock退化为间隙锁。此时未必是唯一索引
+   - 插入18  此时加入的是16和18之间的间隙，以及18与24之间的索引，也就是在18之前以及之后都几上间隙索引。
+
+     
+[![2023-08-26-154926.png](https://i.postimg.cc/CL1s1SZK/2023-08-26-154926.png)](https://postimg.cc/BtrK7WBW)
+  - 此时加入了行锁，锁住了第19行数据的信息，加入了临建锁在25之间的间隙，以及25之后的到无穷大的间隙。
 ### 进阶--锁--小结
+1. 概述
+   - 在并发访问时，解决数据访问的一致性、有效性问题
+   - 全局锁、表级锁、行级锁
+   - 所得力度越小，性能越高
+3. 全局锁
+   - 对整个数据库实例加锁，枷锁后整个实例就处于只读状态
+   - 性能较差，数据逻辑备份时时候
+5. 表级锁
+   - 操作锁住整张表，颗粒粒度大，发生所冲突的概率高
+   - 表锁、元数据锁、意向锁
+7. 行级锁
+   - 操作锁住对应的行数据，颗粒粒度最霄，发生所冲突的概率最低
+   - 行锁、间隙锁、临建锁
 ## 进阶--innoDB引擎
+
 ### 进阶--innoBD引擎--逻辑存储结构
+- innoDB存储结构
+
+[![2023-08-26-160100.png](https://i.postimg.cc/pTMYsjXG/2023-08-26-160100.png)](https://postimg.cc/qtQ3RzKy)
+
+[![2023-08-26-160606.png](https://i.postimg.cc/q73Wt25j/2023-08-26-160606.png)](https://postimg.cc/sB3TqGyh)
+
 ### 进阶--innoBD引擎--架构--内存结构1
+- 在mysql5.5版本开始，默认使用innoDB存储引擎，他擅长事务处理，具有崩溃恢复特性，在日常开发中使用广泛。下面是innDB架构图，左侧为内存结构，右侧为磁盘结构（架构复杂）
+
+[![2023-08-26-160850.png](https://i.postimg.cc/k4ZVj3cn/2023-08-26-160850.png)](https://postimg.cc/Q9QxtzwP)
+- 架构--内存架构
+   - 如果没有缓冲区，那么在增删改时候，每次都会操作磁盘文件，这样会有大量的IO
+   - 因为数据没有上传到磁盘中，所以会不一致
+  
+
 ### 进阶--innoBD引擎--架构--内存结构2
+- 非唯一二级索引页：也就是对唯一索引或主键索引不会有更改缓冲区
+- 不用每次操作磁盘IO,每次操作时，先操作change buffer,然后在以一定的频率把change buffer中的数据同步到buffer pool 然后在刷新到磁盘中，这样就减少了磁盘的ISO,提高了效率
+
+[![2023-08-26-161227.png](https://i.postimg.cc/q7WCk6ts/2023-08-26-161227.png)](https://postimg.cc/06dNnQ0j)
+
+- hash索引
 ### 进阶--innoBD引擎--架构--磁盘结构
 ### 进阶--innoBD引擎--架构--后台线程
 ### 进阶--innoBD引擎--事务原理--概述
@@ -2032,3 +2160,11 @@ alter table...  | excusive  | 与其他的MDL都互斥
 ## 运维--日志--二进制日志
 ## 运维--日志--查询日志
 ## 运维--日志--慢查询日志
+## 运维--主从复制--概述
+## 运维--主从复制--原理
+## 运维--主从复制--主库配置
+## 运维--主从复制--从库配置
+## 运维--主从复制--测试
+## 运维--主从复制--介绍
+## 运维--主从复制--介绍--拆分方式
+## 运维--主从复制--mycat概述--安装
