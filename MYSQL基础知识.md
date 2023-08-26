@@ -2137,12 +2137,57 @@ select ... for update  | 排他锁 | 需要手动在select之后加for update
 [![2023-08-26-161227.png](https://i.postimg.cc/q7WCk6ts/2023-08-26-161227.png)](https://postimg.cc/06dNnQ0j)
 
 - hash索引
+  
+            show variables like 'hasg_index';-- 查看hash是否开启
+
+[![2023-08-26-164837.png](https://i.postimg.cc/httDzDP3/2023-08-26-164837.png)](https://postimg.cc/tY8Q8H6h)
+- log缓冲区
+
+            show variables like '%flush_log';--查看日志刷新到磁盘时机
+
+[![2023-08-26-165317.png](https://i.postimg.cc/cJTf74Qg/2023-08-26-165317.png)](https://postimg.cc/jWwWtT3t)
 ### 进阶--innoBD引擎--架构--磁盘结构
+- 架构--磁盘结构
+
+           show variables like 'data_file_path';-- 查看系统表空间文件
+           show variables like 'data_per_path';-- .ibd文件每个文件都是表空间文件
+
+[![2023-08-26-170136.png](https://i.postimg.cc/rs5HwrrR/2023-08-26-170136.png)](https://postimg.cc/sGDmn1K3)
+- 通用表空间
+
+            create tablespace ts_itheima add datafile 'myitheima.ibd' engine =innodb;--创建通用表空间
+            use itheima;
+            create table a(id int primary key auto_increment,name varchar(10) engine=innodb tablespace ts_itheima;--指定关联的表空间
+- 撤销表空间
+
+[![2023-08-26-170840.png](https://i.postimg.cc/RFJSGXkr/2023-08-26-170840.png)](https://postimg.cc/47ZRxb4w)
+
+[![2023-08-26-171055.png](https://i.postimg.cc/0NJFBFyC/2023-08-26-171055.png)](https://postimg.cc/CZScZvDZ)
 ### 进阶--innoBD引擎--架构--后台线程
+- 后台线程作用：将innoDB存储引擎后台缓冲区的数据加载到磁盘中
+
+          show engine innodb status;--查看innoDB引擎状态信息，包括事务情况，IO情况
+
+[![2023-08-26-171713.png](https://i.postimg.cc/tRfrLD8S/2023-08-26-171713.png)](https://postimg.cc/nM4YmKFB)
+
+[![2023-08-26-171818.png](https://i.postimg.cc/x1V6d8fL/2023-08-26-171818.png)](https://postimg.cc/kBwQ1nt5)
 ### 进阶--innoBD引擎--事务原理--概述
+
+[![2023-08-26-172734.png](https://i.postimg.cc/vB70fd0c/2023-08-26-172734.png)](https://postimg.cc/xJCGVBD2)
+
+[![2023-08-26-172842.png](https://i.postimg.cc/yNyRTYz4/2023-08-26-172842.png)](https://postimg.cc/7CbbH46m)
 ### 进阶--innoBD引擎--事务原理--redolog
+- redo log：解决事务的持久性
+  - 当处理数据的时候，现在缓冲区中，看是否有数据，如果没有数据，会通过后台线程将数据从磁盘当中读取出来，缓冲到缓冲区中，之后直接在缓冲区中的数据进行增删改操作，但是磁盘中的数据不会更改，此时称为脏页，会在一定时机，通过后台线程将脏页刷新到磁盘当中，如果脏页的数据刷入到磁盘中出错，此时，内存中的数据没有刷新到磁盘中，此时持久性就会失效。为解决上面问题，innoDB存储引擎会将数据变化存储到redolog buffer当中,在redolpg buffer中会记录数据页的物理变化，当事务在提交时，会将redolog中的数据直接刷新到磁盘结构中，进而持久化保存到磁盘中，后面脏页数据刷新出错时，redolog会进行数据恢复。为什么不直接将buffer pool中数据刷新到磁盘中，这样会存在严重的性能问题（因为每次操作的时候是随机的，不是顺序的，这样会有严重的IO问题），当用redo log文件时，是顺序存储的，性能更高，这种机制为WAL。
+  - 当脏页数据刷新到磁盘中，此时redo log记录的数据变更不再需要，所以每段时间都会清理redo logg文件，所以是循环的
+
+[![2023-08-26-174947.png](https://i.postimg.cc/xTYLc4JF/2023-08-26-174947.png)](https://postimg.cc/5j7Xrpmw)
 ### 进阶--innoBD引擎--事务原理--undolog
+[![2023-08-26-181313.png](https://i.postimg.cc/KYfJc354/2023-08-26-181313.png)](https://postimg.cc/SXXWDs3p)
 ### 进阶--innoBD引擎--MVCC--基本概念
+- 当前读
+  - 读取的是记录的最新版本，读取时还要保证其他并发事务不能修改当前记录，会对读取的记录进行加锁。对于我们日常的操作，如：select...lock in share mode(共享锁)，select...for update,update,insert,delete（排他锁）都是一种当前读
+  - 
 ### 进阶--innoBD引擎--MVCC--隐藏字段
 ### 进阶--innoBD引擎--MVCC--undolog
 ### 进阶--innoBD引擎--MVCC--resaview
@@ -2155,16 +2200,19 @@ select ... for update  | 排他锁 | 需要手动在select之后加for update
 ### 进阶--mysql管理--常用工具2
 ### 进阶--mysql管理--小结
 ### 进阶篇总结
-# 运维
-## 运维--日志--错误日志
-## 运维--日志--二进制日志
-## 运维--日志--查询日志
-## 运维--日志--慢查询日志
-## 运维--主从复制--概述
-## 运维--主从复制--原理
-## 运维--主从复制--主库配置
-## 运维--主从复制--从库配置
-## 运维--主从复制--测试
-## 运维--主从复制--介绍
-## 运维--主从复制--介绍--拆分方式
-## 运维--主从复制--mycat概述--安装
+# capter3 运维
+## 运维--日志
+### 运维--日志--错误日志
+### 运维--日志--二进制日志
+### 运维--日志--查询日志
+### 运维--日志--慢查询日志
+### 运维--主从复制--概述
+### 运维--主从复制--原理
+### 运维--主从复制--主库配置
+### 运维--主从复制--从库配置
+### 运维--主从复制--测试
+### 运维--分库分表--介绍
+### 运维--分库分表--介绍--拆分方式
+### 运维--分库分表--mycat概述--安装
+### 运维--分库分表--mycat概述--核心概念
+### 运维--分库分表-
