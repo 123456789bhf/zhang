@@ -1958,10 +1958,46 @@ delete触发器  | old表示将要或者已经删除的数据，new没有用，�
   - 对于表锁，分为两类
     1. 表共享锁（read lock）:只能读取不能写入，读锁不会阻塞其他客户端的读，但是会阻塞其他客户端的写
     2. 表独占锁(write lock)
+
   - 语法
     1. 加锁：lock tables 表名 ...read（读锁）/write（写锁）
     2. 释放锁：unlock tables /客户端断开连接
+  - 案例：创建两个，使用的是db01数据库。此时左边的建立了读锁，两个都可以读取数据，左边的不可以更新数据，右边的更新数据时会处于阻塞状态 ，直至左边的可无端释放表锁才可以运行
+[![2023-08-26-093424.png](https://i.postimg.cc/yN5VnQNK/2023-08-26-093424.png)](https://postimg.cc/sBYdgJSH)
+- 下面图片的说明：左边的是当前建立读锁的可无端，右边的是其他客户端，绿色表示可以，红色表示不可以
+[![2023-08-26-093146.png](https://i.postimg.cc/Kz68cqXf/2023-08-26-093146.png)](https://postimg.cc/gXKWNK2L)
+
+  - 案例：创建两个，使用的是db01数据库。此时左边的建立了写锁，左边可无端可以读写数据，其他的客户端不可以读取也不可以写数据，并且处于组赛状态知道左边客户端解锁为止。
+[![2023-08-26-094121.png](https://i.postimg.cc/MG0Dm45M/2023-08-26-094121.png)](https://postimg.cc/WD3g25QT)
+- 下面图片的说明
+[![2023-08-26-093905.png](https://i.postimg.cc/3JWtQt8V/2023-08-26-093905.png)](https://postimg.cc/XpSfwcyk)
+- **注意**：读锁不会阻塞其他客户端的读取，但是会阻塞写。写锁及回族赛其他客户端的读取，也会阻塞其他客户端的写。
 ### 进阶--锁--表级锁--元数据锁
+- 元素据锁（meta data lock,MDL）
+  - MDL枷锁过程是系统自动控制，无序显式使用，在访问一张表的时候会自动加上。MDL锁主要作用是维护表元素据的数据一致性，在表上有活动事务的时候，不可以对元数据进行写入操作。简单来说如果一张表存在未提交的事务，我们不能修改表的数据，为了避免DML与DDL冲突，保证读写正确性。
+  - 在MYSQL5.5中引入了MDL,当对一张表进行增删改查的时候，会自动的加MDL读锁（共享）；当对表结构进行变更操作的时候，会自动的加MDL写锁（排他），读锁（共享）之间是自动兼容的，也就是可以同时执行，对写锁以及写锁与读锁之间不是自动兼容的。
+  - 更对MDL相关介绍参照：https://blog.csdn.net/weixin_48943299/article/details/123927176
+
+对应SQL  | 锁类型 | 说明
+----  | ---------  |--------
+lock tables XXX read/write  | shared_read_only/shared_no_read_write  | 
+select、select...lock in share mode  | shared_read  | 与shared_read、shared_write兼容，与excusive互斥
+insert、update、delete、select...for update  | shared_write（读锁（共享））  | 与shared_read、shared_write兼容，与excusive互斥
+alter table...  | excusive  | 与其他的MDL都互斥
+- 案例
+  - select，update是自动用的 shared_write（读锁（共享））也就是之间相互兼容，可以同时执行
+[![2023-08-26-103138.png](https://i.postimg.cc/KjzM6s2Y/2023-08-26-103138.png)](https://postimg.cc/7GFh79bv)
+  - slect与alter之间不能同时执行，因为shared_write，exclusive之间不兼容此时右侧处理阻塞装袋，直至左侧的解锁才会执行
+[![2023-08-26-103207.png](https://i.postimg.cc/59RYHgJw/2023-08-26-103207.png)](https://postimg.cc/t7FCwhYT)
+- 查看元数据锁(查询系统中的metadata_locks，这里面存储了元数据所
+  
+          select object_type,objet_schema,object_name,lock_type,lock_duration from performance_schema,metadata_locks;
+
+[![2023-08-26-103708.png](https://i.postimg.cc/VkbVyKf4/2023-08-26-103708.png)](https://postimg.cc/75wV0MTT)
+- 下面是左边执行了select语句右边执行了alter语句，这时候有新加了一个锁，并且是不兼容的，此时处于阻塞状态
+[![2023-08-26-103807.png](https://i.postimg.cc/V6Hqkc4t/2023-08-26-103807.png)](https://postimg.cc/1nwnv2kR)
+
+
 ### 进阶--锁--表级锁--意向锁
 ### 进阶--锁--表级锁--意向锁--测试
 ### 进阶--锁--行级锁--介绍
