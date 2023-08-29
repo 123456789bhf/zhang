@@ -1,4 +1,4 @@
-# 2.1探索数据分析
+# 2.1探索数据分析：https://c.d2l.ai/stanford-cs329p/_static/notebooks/cs329p_notebook_eda.slides.html#/13
 # !pip install seaborn pandas matplotlib numpy
 import numpy as np
 import pandas as pd
