@@ -107,17 +107,27 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
 > - ALTER TABLE 表名 ADD 字段名 类型(长度)[COMMENT 字段注释][约束];
 > - 案例：emp添加一个新字段
 > 修改字段
->- 修改指定类型：alter table 表明 modify 字段名 新的数据类型(长度)；
->- 修改字段名和字段类型：alter table change 旧字段名 新字段名 新数据类型(长度)[comment 注释][注释]
+>- 修改指定类型：
+
+              alter table 表明 modify 字段名 新的数据类型(长度)；
+>- 修改字段名和字段类型：
+
+              alter table change 旧字段名 新字段名 新数据类型(长度)[comment 注释][注释]
    案例：
 >  删除字段
->- alter table 表名 drop 字段名；  
+
+             alter table 表名 drop 字段名；  
   案例：
 >  修改表名
->-  alter table 表名 rename to 新表名；
+
+            alter table 表名 rename to 新表名；
 > 删除表
->- 删除表：drop table[if exisets] 表名；
->- 删除指定表，并且重新创建该表：truncate table 表名（为了删除原来表中的数据，在重新创建新表）
+>- 删除表：
+
+            drop table[if exisets] 表名；
+>- 删除指定表，并且重新创建该表：
+
+            truncate table 表名（为了删除原来表中的数据，在重新创建新表）
 ### 11ASQL--图形化界面工具DataGrip
 > MySQL图形化界面
 >- sqlyog
@@ -130,12 +140,15 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
   - 删除数据（delete）
 - MDML - 添加数据
   1. 给指定字段添加数据
-     - insert into 表名（字段名1，字典名2，...） values (值1，值2，...);
+  
+            insert into 表名（字段名1，字典名2，...） values (值1，值2，...);
   2. 给全部字段添加数据
-    - insert into 表名 values (值1，值2，...);
+    
+           insert into 表名 values (值1，值2，...);
   3. 批量添加数据
-    - insert into 表名 （字段 ，字段2，...) values (值1，值2,...),(值1，值2,...),...;
-    - insert into 表名 values (值1，值2,...),(值1，值2,...),...;
+    
+            insert into 表名 （字段 ，字段2，...) values (值1，值2,...),(值1，值2,...),...;
+            insert into 表名 values (值1，值2,...),(值1，值2,...),...;
   
   -  *注意* ：
     - 插入数据时，指定的字段的顺序需要与值的顺序是一一对应的
@@ -143,9 +156,11 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
     - 插入的数据大小，应该在字段的规定范围内
 ### 13SQL--DML--更新和删除
 - DML- 修改数据
-  - update 表名 set 字段1=值1，字段2=值2，....[where 条件]
+  
+            update 表名 set 字段1=值1，字段2=值2，....[where 条件]
 - DML - 删除数据
-  - delete from 表名 [where 条件]
+
+           delete from 表名 [where 条件]
   - *注意*
     - delete的条件如果没有，那么会删除整张表的所有数据
     - delete语句不能删除某个字段的值（可以使用update）
@@ -156,42 +171,45 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
   - 查询关键字：select
 - DQL - 语法
 
-  select
-
-        字段列表
-
-  from
-
-        表名列表
-
-  where
-
-        条件列表
-  
-  group by
-
-        分组字段列表
-
-  having by
-
-        分组后条件列表
-
-  order by
-
-        排序字段列表
-
-  limit
-
-        分页参数
+            select
+          
+                  字段列表
+          
+            from
+          
+                  表名列表
+          
+            where
+          
+                  条件列表
+            
+            group by
+          
+                  分组字段列表
+          
+            having by
+          
+                  分组后条件列表
+          
+            order by
+          
+                  排序字段列表
+          
+            limit
+          
+                  分页参数
 
 - 基本查询
   1. 查询多个字段
-     - select 字段1，字段2，... from 表名；
-     - select * from 表名；
-  2. 设置别名
-     - select 字段1（as 别名1），字段2（as 别名2），... from 表名；
-  3. 去除重复记录
-     - select dinstinct 字段列表 from 表名；
+
+             select 字段1，字段2，... from 表名；
+             select * from 表名；
+  3. 设置别名
+
+           select 字段1（as 别名1），字段2（as 别名2），... from 表名；
+  5. 去除重复记录
+
+          select dinstinct 字段列表 from 表名；
 - 条件查询（where）
 - 聚合函数（count,max,min,avg,sum）
 - 分组查询（group by）
@@ -200,7 +218,8 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
 ### 16SQL--DQL--条件查询
 - DQL - 条件查询
   1. 语法
-     - select 字段列表 from 表名 where 条件；
+
+         select 字段列表 from 表名 where 条件；
   2. 条件
  
  比较运算符  | 功能
@@ -210,7 +229,7 @@ DCL  | Data Control Lanaguage  | 数据控制语言，用来创建数据库用�
  <=  | 小于等于
  =  | 等于
  <或！=  | 不等于
-between 最小值 and最大值  | 在某个范围之内(含最小值，最小值)
+between 最小值 and最大值  | 在某个范围之内(含最小值，最大值)
 in(...)  | 在in之后的列表中的值，多选一（取值在in后面的（）里面放着）
 like 占位符  | 模糊匹配（占位符由两种：_匹配单个字符，%匹配任意一个字符）
 is null  | 是NULL
@@ -238,11 +257,12 @@ avg  | 平均值
 sum  | 求和
 3. 语法
 
-select 聚合函数（字段列表） from 表名；
--remark：所以的NULL值在聚合函数中都不会参数计算
+          select 聚合函数（字段列表） from 表名；
+-remark：所有的NULL值在聚合函数中都不会参数计算
 ### 18SQL--DQL--分组查询
 1. 语法
-- select 字段列表 from 表名[where 条件] group by 分组字段名[having 分组后过滤条件]
+
+           select 字段列表 from 表名[where 条件] group by 分组字段名[having by 分组后过滤条件]
  
 2. where与having区别
  - 执行实际不同：where是分组之前进行过滤，不满足where条件，不参与分组；而having是分组之后对结果进行过滤
@@ -253,7 +273,8 @@ select 聚合函数（字段列表） from 表名；
 - 分组之后，查询的字段一般为聚合函数和分组字段，查询其他字段无任何意义
 ### 19SQL--DQL--排序查询
 1. 语法
-- select 字段列表 from 表名 order by 字段1 排序方式1，字段2，排序方式2；
+
+          select 字段列表 from 表名 order by 字段1 排序方式1，字段2，排序方式2；
 2. 排序方式
 - ASC:升序（默认值）
 - DESC:降序
@@ -273,33 +294,34 @@ select 聚合函数（字段列表） from 表名；
 4. 查询所以有年龄小于等于35岁的姓名和年龄，并对查询结果按照年龄升序排序，如果年龄相同按照入职时间降序排序
 5. 查询性别为男，并且年龄在20~40(含）以内的前5个员工的信息，对查询的结果按照年龄升序排序，年龄相同的按照入职时间升序排序
 ### SQL--DDL--执行顺序
- select  **4**
-
-        字段列表
-
-  from    **1**
-
-        表名列表
-
-  where   ****2****
-
-        条件列表
-
-  group by   **3**
-
-        分组字段列表
-
-  having by  
-
-        分组后条件列表
-
-  order by  **5**
-
-        排序字段列表
-
-  limit  **6**
-
-        分页参数
+ 
+           select  **4**
+          
+                  字段列表
+          
+            from    **1**
+          
+                  表名列表
+          
+            where   ****2****
+          
+                  条件列表
+          
+            group by   **3**
+          
+                  分组字段列表
+          
+            having by  
+          
+                  分组后条件列表
+          
+            order by  **5**
+          
+                  排序字段列表
+          
+            limit  **6**
+          
+                  分页参数
 
 - 书写时候必须按照这个顺序，比如limit在最后，order by在having前面，但执行顺序不同，见黑体
 ### SQL--DDL--小结
