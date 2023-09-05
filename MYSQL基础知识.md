@@ -428,7 +428,7 @@ datediff(date1,date2)   | 返回起始时间date1和结束时间date2之间的�
 
 函数   |  功能名
 -----   | -----
-if（value,t,f)   |  如果值value为true返回t,否则返回f
+if（value,t,f)   |  如果值value不为空或者是真，那么返回t,否则返回f
 ifnull(value1,value2)   |  如果value1不为空，那么返回value1,否则返回value2
 case when [val1] then [res1] ... else[default] end (...表示when then 可以有多个)  | 如果val1是true那么返回res1,否则返回默认值default
 case expr when [val1] then [res1] ... else [default] end   | 如果expr的值为val1,返回res1,否则，返回默认值default
