@@ -1150,7 +1150,21 @@ Full-text  | 5.6版本之后  | 支持 | 不支持
 [![2023-08-22-222933.png](https://i.postimg.cc/XvkXrqBS/2023-08-22-222933.png)](https://postimg.cc/7CbqcxNm)
 
 - B-Tree介绍：https://blog.csdn.net/yin767833376/article/details/81511377
-  
+- 一棵m阶的B-Tree有如下特性： 
+1. 每个节点最多有m个孩子。 
+2. 除了根节点和叶子节点外，其它每个节点至少有Ceil(m/2)个孩子。 
+3. 若根节点不是叶子节点，则至少有2个孩子 
+4. 所有叶子节点都在同一层，且不包含其它关键字信息 
+5. 每个非终端节点包含n个关键字信息（P0,P1,…Pn, k1,…kn） 
+6. 关键字的个数n满足：ceil(m/2)-1 <= n <= m-1 
+7. ki(i=1,…n)为关键字，且关键字升序排序。 
+8. Pi(i=1,…n)为指向子树根节点的指针。P(i-1)指向的子树的所有节点关键字均小于ki，但都大于k(i-1)
+
+B-Tree中的每个节点根据实际情况可以包含大量的关键字信息和分支，如下图所示为一个3阶的B-Tree： 
+
+<center><img src="https://img-blog.csdn.net/20160202204827368.png" width="500" hegiht="" ></center>
+<center><br> </br></center>
+  [https://img-blog.csdn.net/20160202204827368](https://img-blog.csdn.net/20160202204827368)
 ### 进阶--索引--结构--B+tree
 - B+Tree
   - 以一颗最大度数（max-degree）为4（4阶）的b+tree为例子
