@@ -1254,6 +1254,7 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
         create [unique|fulltext] index index_name on table_namen (index_col_name,...);
         如果没有 [unique|fulltext]就表示创建的是常规索引
         index_col_name,...表示一个索引可以关联多个字段的
+  - 主键索引在创建主键的时候自动创建，所以不要单独创建。子需要创建其他三个
   - 如果一个索引关联一个字段称为**单列索引**
   - 如果一个索引关联多个字段称为**组合索引/关联索引**
 - 查看索引
