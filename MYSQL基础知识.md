@@ -1671,9 +1671,9 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
 
 ### 进阶--视图--检查选项（cascaded）
 - 试图检查选项
-  - 当使用with check option子句创建视图时，mysql会通过视图检查正在更改的每个行，例如：插入，更新，删除，以使其其符合视图的定义。mysql允许基于另一个视图创建视图，他还会检查依赖试图中的规则以保持一致性。为了确定检查的范围，mysql提供了两个选项：cascaded和local,默认值为cascaded。
+  - 当使用with check option子句创建视图时，mysql会通过视图检查正在更改的每个行，例如：插入，更新，删除(这里也更改了原表中的数据)，以使其其符合视图的定义。mysql允许基于另一个视图创建视图，他还会检查依赖试图中的规则以保持一致性。为了确定检查的范围，mysql提供了两个选项：cascaded和local,默认值为cascaded。
    - cascaded:比如，v2视图是基于v1视图的，如果在v2视图创建的时候指定了检查选项为 cascaded，但是v1视图创建时未指定检查选项。 则在执行检查时，不仅会检查v2，还会级联检查v2的关联视图v1。
-     - v2在v1的基础上创建的视图，在对v2操作时，不仅要检查是否满足v2的条件还要检查是否满足v1的条件，虽然v1创建时没有加上cascaded选项，这种现象称为**级联**
+     - v2在v1的基础上创建的视图，在对v2操作时，不仅要检查是否满足v2的条件还要检查是否满足v1的条件，如果不满足条件就不会执行sql语句，原表中的数据不会更改。虽然v1创建时没有加上cascaded选项，这种现象称为**级联**
        
          create view vl ad select id,name from student where id<20;
          create view v2 ad select id,name from v1 where id<20 with cascaded check option;
@@ -1683,9 +1683,9 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
 ### 进阶--视图--检查选项（local）
 - 试图检查选项
   - 当使用with check option子句创建视图时，mysql会通过视图检查正在更改的每个行，例如：插入，更新，删除，以使其其符合视图的定义。mysql允许基于另一个视图创建视图，他还会检查依赖试图中的规则以保持一致性。为了确定检查的范围，mysql提供了两个选项：cascaded和local,默认值为cascaded。
-  - local：比如，v2视图是基于v1视图的，如果在v2视图创建的时候指定了检查选项为 local ，但是v1视图创 建时未指定检查选项。 则在执行检查时，知会检查v2，不会检查v2的关联视图v1。
+  - local：比如，v2视图是基于v1视图的，如果在v2视图创建的时候指定了检查选项为 local ，但是v1视图创建时未指定检查选项。 则在执行检查时，会检查v2，不会检查v2的关联视图v1。
 
-          create view v1 as select id,name from student where id<=15 #检查
+          create view v1 as select id,name from student where id<=15 #不检查
           create view v2 as select id,name from v1 where id>=10 with local check option; #检查
           create view v3 as select id,name from v2 where id>=10； #不检查
 [![2023-08-24-165012.png](https://i.postimg.cc/7YzRLJLB/2023-08-24-165012.png)](https://postimg.cc/mtbjXDCM)
@@ -1703,7 +1703,7 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
   - 安全
     - 数据库可以授权，但不能授权到特定的行和特定的列上。通过视图，用户只能查询和修改他们所能见到的数据。这样就可以保证数据安全性
   - 数据独立
-    - 视图可以帮助用户屏蔽真实表结构变化带来的影响。比如，对数据列重新命名，真是表的字段名变化不会改变视图中的字段名
+    - 视图可以帮助用户屏蔽真实表结构变化带来的影响。比如，对数据列重新命名，真实表的字段名变化不会改变视图中的字段名
 
             create or replace view stu_v_4 as select id,studentname as name from student where id<=15；
 
@@ -1745,7 +1745,7 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
   - 系统变量
     - 全局变量
     - 会话变量
-  - 用户变量
+  - 局部变量
   - 用户自定义变量
 - 系统变量：是mysql服务器提供，不是用户定义的，属于服务器层面。分为全局变量（global）、会话变量（session）。
   - 查看系统变量(session ,global可以不指定，默认是session)
@@ -1761,7 +1761,7 @@ B-Tree中的每个节点根据实际情况可以包含大量的关键字信息�
     - 如果没有指定session/global,默认是session,会话变量
     - mysql服务器重新启动之后，所设置的全局参数会失效，如果不想失效，可以在/etc/my.cnf中配置
 ### 进阶--存储过程--变量--用户自定义变量
-- 用户自定义变量：是指用户根据需要自己定义的变量，永辉变量不用提前声明，在用的时候直接使用’@变量名‘使用就可以，其作用域为当前连接。@@是系统变量，@s是用户自定义变量
+- 用户自定义变量：是指用户根据需要自己定义的变量，永辉变量不用提前声明，在用的时候直接使用’@变量名‘使用就可以，其作用域为当前连接。@@是系统变量，@是用户自定义变量
 - 赋值
   
           set @var_name=expr[,@var_name=expr]...;
