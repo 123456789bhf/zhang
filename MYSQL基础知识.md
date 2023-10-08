@@ -440,6 +440,16 @@ case expr when [val1] then [res1] ... else [default] end   | 如果expr的值为
 2. 数值函数：ceil,floor,rand(),round()
 3. 日期函数：curdate，curtime,now,year,month,day,date_add,datefidd
 4. 流程函数：if ,ifnull,case when then  else end
+## 窗口函数
+### 窗口函数--定义
+- 定义
+  - 窗口函数，也叫OLAP函数（Online Anallytical Processing，联机分析处理），可以对数据库数据进行实时分析处理。
+- 语法
+
+            <窗口函数> over (partition by<用于分组的列名>
+                            order by<用于排序的列名>
+- 窗口函数的类型
+  
 ## 第四节 约束
 ### 约束--概述
 1. 概念：约束时作用域表中字段上的规则，用于限制存储在表中的数据
