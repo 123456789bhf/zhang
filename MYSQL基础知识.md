@@ -447,9 +447,94 @@ case expr when [val1] then [res1] ... else [default] end   | 如果expr的值为
 - 语法
 
             <窗口函数> over (partition by<用于分组的列名>
-                            order by<用于排序的列名>
+                            order by<用于排序的列名>)
 - 窗口函数的类型
+ - 专用窗口函数：rank,dense_rank,row_number
+ - 聚合函数：sum,avg,count,max,min等
+- **注意**：因为窗口函数是对where或者group by子句处理后的结果进行操作，所以窗口函数原则上只能写在select子句中。
+### 窗口函数--实际例子
+1. 专用窗口函数rank
+
+          select *,rank() over (partition by 班级
+                                 order by 成绩 desc) as ranking
+           from 班级表；
+   
+- 下图是班级表中的内容
+[![2023-10-08-185351.png](https://i.postimg.cc/xCLGM3H9/2023-10-08-185351.png)](https://postimg.cc/gXk6PRN7)
+
+- 如果我们想在每个班级内按照成绩排名，得到下面的结果
+
+[![2023-10-08-185438.png](https://i.postimg.cc/3J8j0pwH/2023-10-08-185438.png)](https://postimg.cc/bd5SKZb6)
+
+- group by，order by与窗口函数的区别
+  - group by分组汇总后改变了表的行数，一行只有一个类别。而partiition by和rank函数不会减少原表中的行数。例如下面统计每个班级的人数。
   
+[![2023-10-08-185709.png](https://i.postimg.cc/bwNj56NF/2023-10-08-185709.png)](https://postimg.cc/HVKKc9MQ)
+
+2. 其他专业窗口函数
+- rank，dense_rank,row_number有什么区别呢
+
+          select *,
+          rank() over (order by 成绩 desc) as ranking,
+          dese_rank() over (order by 成绩 desc) as dese_rank,
+          row_number() over (order by 成绩 desc) as row_num
+          from 班级表
+- 结果
+
+[![2023-10-08-191253.png](https://i.postimg.cc/fyVN8C70/2023-10-08-191253.png)](https://postimg.cc/K3hwznHZ)
+
+ - rank函数：这个例子中是5位，5位，5位，8位，也就是如果有并列名次的行，会占用下一名次的位置。比如正常排名是1，2，3，4，但是现在前3名是并列的名次，结果是：1，1，1，4。
+ - dense_rank函数：这个例子中是5位，5位，5位，6位，也就是如果有并列名次的行，不占用下一名次的位置。比如正常排名是1，2，3，4，但是现在前3名是并列的名次，结果是：1，1，1，2。
+ - row_number函数：这个例子中是5位，6位，7位，8位，也就是不考虑并列名次的情况。比如前3名是并列的名次，排名是正常的1，2，3，4。
+3. 聚合函数作为窗口函数
+- 聚和窗口函数和上面提到的专用窗口函数用法完全相同，只需要把聚合函数写在窗口函数的位置即可，但是函数后面括号里面不能为空，需要指定聚合的列名。
+  
+            select *,
+                    sum(成绩） over (order by 学号) as current_sum,
+                    avg(成绩） over (order by 学号） as current_avg,
+                    count(成绩） over (order by 学号） as current_count,
+                    max(成绩） over (order by 学号） as current_max,
+                    min(成绩） over (order by 学号） as current_min,
+            from 班级表；
+  - 结果
+  
+[![2023-10-08-191740.png](https://i.postimg.cc/25L99tgY/2023-10-08-191740.png)](https://postimg.cc/LqRVnxHQ)
+
+ - 如上图，聚合函数sum在窗口函数中，是对自身记录、及位于自身记录以上的数据进行求和的结果。比如0004号，在使用sum窗口函数后的结果，是对0001，0002，0003，0004号的成绩求和，若是0005号，则结果是0001号~0005号成绩的求和，以此类推。
+ - 不仅是sum求和，平均、计数、最大最小值，也是同理，都是针对自身记录、以及自身记录之上的所有数据进行计算，现在再结合刚才得到的结果（下图），是不是理解起来容易多了？
+ - 比如0005号后面的聚合窗口函数结果是：学号0001~0005五人成绩的总和、平均、计数及最大最小值。
+ - 如果想要知道所有人成绩的总和、平均等聚合结果，看最后一行即可。
+### 窗口函数--总结
+1. 窗口函数语法
+
+
+            <窗口函数> over (partition by <用于分组的列名>
+                            order by <用于排序的列名>)
+2. <窗口函数>的位置，可以放以下两种函数：
+
+- 专用窗口函数，比如rank, dense_rank, row_number等
+
+- 聚合函数，如sum. avg, count, max, min等
+
+
+
+3. 窗口函数有以下功能：
+
+- 同时具有分组（partition by）和排序（order by）的功能
+
+- 不减少原表的行数，所以经常用来在每组内排名
+
+4. 注意事项
+
+- 窗口函数原则上只能写在select子句中
+
+5. 窗口函数使用场景
+
+- 业务需求“在每组内排名”，比如：
+
+ - 排名问题：每个部门按业绩来排名
+ - topN问题：找出每个部门排名前N的员工进行奖励
+
 ## 第四节 约束
 ### 约束--概述
 1. 概念：约束时作用域表中字段上的规则，用于限制存储在表中的数据
