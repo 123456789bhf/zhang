@@ -81,7 +81,12 @@
 [![2023-10-16-234333.png](https://i.postimg.cc/2y9c64Dk/2023-10-16-234333.png)](https://postimg.cc/0KmdXKjF)
 [![2023-10-16-234644.png](https://i.postimg.cc/hPcnknCp/2023-10-16-234644.png)](https://postimg.cc/s16bWkCh)
 - 营销落地页：通过他人达到的某个商品购买的页面
-
+- BI可以给定数据将各中指标求出
+[![2023-10-16-234921.png](https://i.postimg.cc/d3HjqwKg/2023-10-16-234921.png)](https://postimg.cc/SY9Md0RG)
+- 内容凭他：比如：抖音、微博都是
+- UGC:最好的状态，也就是用户就是内容生成者，比如：B站。
+- OGC：内容创造平台，公司、媒体创造内容
+- PGC：行业领袖、专业生产内容的平台
 ### 数据分析的方法和模型
 ### 统计的世界
 ### EXCEL
