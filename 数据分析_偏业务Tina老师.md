@@ -157,8 +157,21 @@
 - 当一个游戏具有上面8种属性的时候就是最好的，拼多多就有上面的8种属性
 [![2023-10-17-225135.png](https://i.postimg.cc/fbd4hkXS/2023-10-17-225135.png)](https://postimg.cc/QBjYQ8fj)
 - 也可用用八角分析法分析这种角度分析数据
+- 总结
+  - 分析问题可以采用费米问题分析方法或者5W2H、AARRR模型来分析数据
 ### 统计的世界
-
+[![2023-10-17-231244.png](https://i.postimg.cc/YqrnMRTw/2023-10-17-231244.png)](https://postimg.cc/nMWY14Hd)
+[![2023-10-17-232238.png](https://i.postimg.cc/4xSh26DG/2023-10-17-232238.png)](https://postimg.cc/CRb1zqMr)
+[![2023-10-17-232329.png](https://i.postimg.cc/wvdMn0FC/2023-10-17-232329.png)](https://postimg.cc/XZQnCKRL)
+- （离散变量的相关性检验：卡方检验
+[![2023-10-17-232628.png](https://i.postimg.cc/KcCGW9zJ/2023-10-17-232628.png)](https://postimg.cc/K4rhkDtM)
+[![2023-10-17-233520.png](https://i.postimg.cc/pV30njGm/2023-10-17-233520.png)](https://postimg.cc/jCQ6pDrT)
+[![2023-10-17-233607.png](https://i.postimg.cc/284xbKLt/2023-10-17-233607.png)](https://postimg.cc/Wh1ZxSnm)
+- 连续变量的相关性检验
+[![2023-10-17-233810.png](https://i.postimg.cc/bJpPPMbj/2023-10-17-233810.png)](https://postimg.cc/nsRgY30d)
+[![2023-10-17-233923.png](https://i.postimg.cc/DfNNdHZy/2023-10-17-233923.png)](https://postimg.cc/jCzvR8PG)
+- 皮尔相关系数前提是数据是正态分布，但是斯皮尔曼相关系数对分布没有要求，判断数据是否服从正态分布
+[![2023-10-17-234820.png](https://i.postimg.cc/7P72LJpP/2023-10-17-234820.png)](https://postimg.cc/kDJ41GJL)
 ### EXCEL
 ### 商业智能_Power BI
 ### Tableau
