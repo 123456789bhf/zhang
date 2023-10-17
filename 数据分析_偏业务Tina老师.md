@@ -1,4 +1,4 @@
-## 数据分析（偏业务方向）
+## 数据分析（偏业务方向）_看深入浅出数据分析
 详细见iypn文件
 ### 数据分析岗位职责和数据分析师
 [![2023-10-15-213940.png](https://i.postimg.cc/TwHyRt0s/2023-10-15-213940.png)](https://postimg.cc/PpYfyzBb)
@@ -172,6 +172,7 @@
 [![2023-10-17-233923.png](https://i.postimg.cc/DfNNdHZy/2023-10-17-233923.png)](https://postimg.cc/jCzvR8PG)
 - 皮尔相关系数前提是数据是正态分布，但是斯皮尔曼相关系数对分布没有要求，判断数据是否服从正态分布
 [![2023-10-17-234820.png](https://i.postimg.cc/7P72LJpP/2023-10-17-234820.png)](https://postimg.cc/kDJ41GJL)
+- 建议：看深入浅出数据分析
 ### EXCEL
 ### 商业智能_Power BI
 ### Tableau
