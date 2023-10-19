@@ -181,5 +181,7 @@
 ### EXCEL
 ### 商业智能_Power BI
 见pdf文件："C:\Users\23665\Desktop\研一上课资料\111\sql\数据分析实战\Tina老师一周数据分析POWERBI工具从入门到进阶课件 - 副本\06.Power BI Power Pivot\Power Pivot.pdf"
+
+dax函数：在power BI官网上能够搜索到dax的文档
 ### Tableau
 ### 数据分析介绍
