@@ -1,4 +1,7 @@
 ## 数据分析（偏业务方向）
+视频链接
+
+https://www.bilibili.com/video/BV14U4y1e7Jy?p=70&vd_source=d76bdaf2188cbe14546d9b55951ecc55
 
 - 对业务面主要做以下准备
   - 《深入浅出数据分析》
@@ -506,3 +509,23 @@ AARRR模型是国外肖恩在他的书《增长黑客—如何低成本实现爆
           #insert_time中提取日期，去掉时间
           update taobao_data set insert_data=date_format(insert_time,'%Y_%m_%d');
           select *,last_value(insert_time) over(partition by item_id,insert_data order by insert_time rows between unbounded preceding and unbounded following) as max_time from taobao_data;
+          #方法一：
+          select * from 
+          (select *,last_value(insert_time) over(partition by item_id,insert_data order by insert_time rows between unbounded preceding and unbounded following) as max_time from taobao_data where item_id='600430292632' order by insert_time) as e
+          where max_time=insert_time;
+          #方法二：max函数实现
+          #方法三：rank()
+#### 描述性统计分析
+https://zhuanlan.zhihu.com/p/112175607
+#### 统计学基本知识
+主要看maoshisong的《概率论与数理统计学》中的统计学的知识。
+
+https://zhuanlan.zhihu.com/p/123314439
+#### 分类数据分析
+https://zhuanlan.zhihu.com/p/124131027
+
+**方差分析**（analysis of variance ANOVA） 就是通过检验各总体的均值是否相等来判断分类型自变量对数值型因变量是否有显著影响。
+
+方差分析根据分类型自变量的多少，分为：
+- 单因素方差分析
+- 多因素方差分析
