@@ -1,9 +1,13 @@
 # SPark--黑马程序员
+"C:\Users\23665\Desktop\研一上课资料\111\sql\spark\笔记\1.笔记"
 ## SPark框架
 ### spark框架_简介
 ### SPark框架_VS Haddoop
 - 一次性数据计算
   - 框架在处理数据的时候，汇总存储设备中读取数据，进行逻辑操作，然后将处理的结果重新存储到介质中。
+  - 详细见（mapper:打散数据，reducer:聚合数据）
+  [![2023-10-22-120242.png](https://i.postimg.cc/W3707n6M/2023-10-22-120242.png)](https://postimg.cc/1nfgmDdt)
+  [![2023-10-22-120336.png](https://i.postimg.cc/xTZMgqHF/2023-10-22-120336.png)](https://postimg.cc/dL8hVs58)
 ### SPark框架_核心模块_介绍
 ### SPark框架_快速上手
 #### SPark框架_快速上手_开发环境准备
