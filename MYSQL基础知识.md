@@ -1,5 +1,8 @@
 
 # chaptre1 MRSQL基础篇
+## sql面试常见问题
+尚硅谷公众号--》尚硅谷视频教程及资料免费下载--》mysql面试专题即可
+https://www.gulixueyuan.com/my/course/562?type=tasks
 # 第一章 基础
 ## 第一节 MYSQL概述
 ### 01数据库概念
