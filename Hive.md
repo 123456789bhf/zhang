@@ -1,6 +1,9 @@
 # SPark--黑马程序员
 详细见连接：https://www.bilibili.com/video/BV11A411L7CK?p=18&spm_id_from=pageDriver&vd_source=d76bdaf2188cbe14546d9b55951ecc55
+
 "C:\Users\23665\Desktop\研一上课资料\111\sql\spark\笔记\1.笔记"
+
+需要学习：hadoop,scala
 ## SPark框架
 ### spark框架_简介
 ### SPark框架_VS Haddoop
