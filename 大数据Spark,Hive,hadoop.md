@@ -1,10 +1,14 @@
-# SPark--黑马程序员
-详细见连接：https://www.bilibili.com/video/BV11A411L7CK?p=18&spm_id_from=pageDriver&vd_source=d76bdaf2188cbe14546d9b55951ecc55
+# hadoop--黑马程序员
+详细见连接：https://www.bilibili.com/video/BV1Qp4y1n7EN/?spm_id_from=333.337.search-card.all.click&vd_source=d76bdaf2188cbe14546d9b55951ecc55
 
-"C:\Users\23665\Desktop\研一上课资料\111\sql\spark\笔记\1.笔记"
+
+"C:\Users\23665\Desktop\研一上课资料\111\sql\hadoop\笔记\1.笔记"
+## SPark框架
+https://www.bilibili.com/video/BV11A411L7CK/?spm_id_from=333.999.0.0
 
 需要学习：hadoop,scala
-## SPark框架
+
+详细资料见："C:\Users\23665\Desktop\研一上课资料\111\sql\sparkp笔记\1.笔记"
 ### spark框架_简介
 ### SPark框架_VS Haddoop
 - 一次性数据计算
